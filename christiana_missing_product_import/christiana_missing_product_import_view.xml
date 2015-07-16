@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+
+        <record id="view_missing_product_import_wizard" model="ir.ui.view">
+            <field name="name">Ontbrekende Boeken Importeren</field>
+            <field name="model">missing.product.import.wizard</field>
+            <field name="arch" type="xml">
+            <form string="Ontbrekende Boeken Importeren" version="7.0">
+                <group colspan="4">
+                    <!--    <label for="lines_file" string="Entry Lines File"/>-->
+                    <field name="product_file"/>
+                </group>
+                <footer>
+                 <div name="product_import">
+                        <button name="product_import" type="object" string="Import Bestand" class="oe_highlight"/>
+                        <button string="Cancel" class="oe_link" special="cancel" />
+                 </div>
+                 </footer>
+            </form>
+            </field>
+        </record>
+
+        <record id="act_missing_product_import_wizard" model="ir.actions.act_window">
+            <field name="name">Import Bestand Ontbrekende Boeken</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">missing.product.import.wizard</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_missing_product_import_wizard"/>
+            <field name="target">new</field>
+        </record>
+        
+        <menuitem name="Import Bestand Ontbrekende Boeken" parent="christiana_product_import.menu_import_boeken" id="menu_import_ontbrekende_boeken" sequence="50" action="act_missing_product_import_wizard"/>
+
+    </data>
+</openerp>

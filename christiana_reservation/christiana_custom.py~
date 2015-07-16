@@ -1,0 +1,203 @@
+# -*- encoding: utf-8 -*-
+
+from mx import DateTime
+import time
+
+from openerp.osv import fields, osv
+from openerp.tools.translate import _
+
+WARNING_MESSAGE = [
+                   ('no-message','No Message'),
+                   ('warning','Warning'),
+                   ('block','Blocking Message')
+                   ]
+
+WARNING_HELP = _('Selecting the "Warning" option will notify user with the message, Selecting "Blocking Message" will throw an exception with the message and block the flow. The Message has to be written in the next field.')
+
+class product_product(osv.osv):
+    _inherit = "product.product"
+
+    _columns = {
+        'print_number': fields.integer('Druknummer'),
+        'release_date': fields.date('Verschijningsdatum'),
+        'author_id': fields.many2one('res.author', 'Auteur', select=True),
+        'co_author_id': fields.many2one('res.co.author', 'Co-Auteur', select=True),
+        'awso_code': fields.selection((('A','Algemeen'),('W','Wetenschappelijk'),('S','Studie'),('O','Overige')),'AWSO Code'),
+        'artikel_status': fields.selection((('1','In Productie'),('2','Verschenen'),('3','In Bijdruk/Herdruk'),('4','Uitverkocht'),('6','Te Bestellen bij Uitgever'),('7','In Prijs Opgeheven'),('8','Herdruk in Overweging'),('9','Printing on Demand')),'Artikel Status'),
+        'uitgave_soort': fields.selection((('B','Boek'),('K','Kaart'),('D','Diverse'),('C','CD-Rom'),('V','Video'),('A','Audiocassette'),('Z','DVD'),('P','CDI'),('S','Software'),('I','Internetpublicatie'),('E','CD (Audio)'),('X','Display/Promotiemateriaal'),('DG','E-Boek')),'Uitgave Soort'),
+        'uitvoering': fields.selection((('GB','Gebonden'),('PB','Paperback'),('PK','Pocket'),('LB','Losbladig'),('GL','Garenloos'),('SP','Spiraalband'),('AA','Andere')),'Uitvoering'),
+        'voorraadcode': fields.selection((('V','Leverbaar uit Voorraad'),('S','Speciale Bestelling'),('I','Informatieve Titel'),('P','Printing on Demand'),('N','Niet Leverbaar'),('O','Nog niet Leverbaar'),('T','Tijdelijk niet Leverbaar')),'Voorraadcode'),
+        'netwerkcode': fields.selection((('J','Bestellen via Boekenbank'),('N','Niet bestellen via Boekenbank')),'Netwerkcode'),
+        'nbr_paginas': fields.integer('Aantal Paginas'),
+        'illustraties': fields.boolean('Illustraties'),
+        'co_editie': fields.char('Co-Editie', size=13),
+        'substituut_isbn': fields.char('Substituut ISBN', size=13),
+        'set_isbn': fields.char('Set ISBN', size=13),
+        'sectietitel': fields.selection((('WB','Werkboek'),('HB','Handboek'),('HL','Handleiding'),('DO','Docenthandleiding')),'Sectietitel'),
+        'jaar_release1': fields.integer('Jaar 1ste Verschijning'),
+        'hoofdtitel': fields.text('Hoofdtitel'),
+        'ondertitel': fields.text('Ondertitel'),
+        'deeltitel': fields.text('Deeltitel'),
+        'oorsprtitel': fields.text('Oorspronkelijke Titel'),
+        'imprint': fields.text('Imprint'),
+        'reeksnaam': fields.text('Reeksnaam'),
+        'reeksnummer': fields.char('Nr. binnen Reeks', size=10),
+        'taalcode': fields.char('Taalcode', size=32),
+        'oorsprtaal': fields.char('Oorspronkelijke Taal', size=32),
+        'bijlage': fields.selection((('CD','CD-Rom'),('DVD','DVD'),('DI','Diskette'),('P','Printing on Demand')),'Bijlage'),
+        'uitgevernummer': fields.char('Uitgevernummer', size=32),
+        'distributeur': fields.char('Distributeur', size=32),
+        'fondscode': fields.char('Fondscode', size=32),
+        'formaat': fields.char('Formaat', size=10),
+        'depotnummer': fields.char('Wettelijk Depotnummer', size=32),
+        'avi_niveau': fields.char('Avi-Niveau', size=10),
+        'btw21': fields.float('Percentage 21% BTW'),
+        'author_temp': fields.char('Auteur (Temp)', size=128),
+        'co_author_temp': fields.char('Co-Auteur (Temp)', size=128),
+	'combined_vat': fields.boolean('Samengestelde BTW'),
+     }
+
+product_product()
+
+class product_template(osv.osv):
+    _inherit = "product.template"
+    
+    _columns = {
+        'unique_name': fields.char('Unique Name', size=128, required=True, searchable=True, translate=True),
+    }
+
+product_template()
+
+class res_author(osv.osv):
+    _name = 'res.author'
+    _description = 'Author'
+
+    _columns = { 
+        'name': fields.char('Name', size=128, required=True),
+        'product_ids': fields.one2many('product.product', 'author_id', 'Products'),
+    }
+
+res_author()
+
+class res_co_author(osv.osv):
+    _name = 'res.co.author'
+    _description = 'Co-Author'
+
+    _columns = { 
+        'name': fields.char('Name', size=128, required=True),
+        'product_ids': fields.one2many('product.product', 'co_author_id', 'Products'),
+    }
+
+res_co_author()
+
+class sale_order(osv.osv):
+    _inherit = 'sale.order'
+
+    _columns = { 
+        'zichtzending': fields.boolean('Zichtzending'),
+    }
+
+sale_order()
+
+class res_partner_budget(osv.osv):
+    _name = 'res.partner.budget'
+    _description = 'Partner budget'
+
+    _columns = { 
+        'year': fields.char('Year', size=4, required=True),
+        'budget': fields.float('Budget', digits=(12,2)),
+        'partner_id': fields.many2one('res.partner', 'Partner', required=True, select=True),
+    }
+
+res_partner_budget()
+
+class res_partner(osv.osv):
+    _inherit = "res.partner"
+    
+    _columns = {
+        'sale_qty_warn' : fields.selection(WARNING_MESSAGE, 'Sales Order', help=WARNING_HELP, required=True),
+        'sale_qty_warn_msg' : fields.text('Message for Sales Order exceeding the Max Qty per Book'),
+        'min_order_amount': fields.float('Min Order Amount', digits=(12,2)),
+        'max_qty_per_book': fields.integer('Max Book Qty'),
+        'partner_budget_ids': fields.one2many('res.partner.budget', 'partner_id', 'Budgets'),
+    }
+    
+    _defaults = {
+         'sale_qty_warn' : 'no-message',
+    }
+
+res_partner()
+
+class sale_order_line(osv.osv):
+    _inherit = 'sale.order.line'
+    
+    _columns = {
+        'author_id': fields.related('product_id', 'author_id', type='many2one', relation='res.author', string='Author', readonly=True),
+        'isbn_number': fields.related('product_id', 'default_code', type='char', string='ISBN Nr.', readonly=True),
+    }
+
+    def product_id_change(self, cr, uid, ids, pricelist, product, qty=0, uom=False, qty_uos=0, uos=False, name='', partner_id=False, lang=False, update_tax=True, date_order=False, packaging=False, fiscal_position=False, flag=False, context=None):
+
+	if not product:
+	    return False
+
+        res = super(sale_order_line, self).product_id_change( cr, uid, ids, pricelist, product, qty, uom, qty_uos, uos, name, partner_id, lang, update_tax, date_order, packaging, fiscal_position, flag, context=context)
+ 
+        warning = False
+        title = ''
+        message = ''
+        
+        if partner_id:
+            partner_obj = self.pool.get('res.partner')
+            partner_info = partner_obj.browse(cr, uid, partner_id)
+            if partner_info.max_qty_per_book and partner_info.max_qty_per_book < qty:
+                if partner_info.sale_qty_warn != 'no-message':
+                    if partner_info.sale_qty_warn =='block':
+                        raise osv.except_osv(_('Alert for %s !') % (partner_info.name), partner_info.sale_qty_warn_msg)
+                title = _('Warning for %s') % partner_info.name
+                message = partner_info.sale_qty_warn_msg
+		if not warning:
+		    warning = True
+		    res['warning'] = {}
+                res['warning']['title'] = title
+                res['warning']['message'] = message
+
+	if product:
+            product_obj = self.pool.get('product.product')
+            product_info = product_obj.browse(cr, uid, product)
+            if product_info.combined_vat:
+                title = 'Opgelet: artikel met gecombineerd BTW-tarief'
+                message = ('Percentage BTW aan 21 procent is %s') % (product_info.btw21)
+		if not warning:
+		    warning = True
+		    res['warning'] = {}
+                res['warning']['title'] = title
+                res['warning']['message'] = message
+#                res['warning']['title'] = title and title + ' & ' + res['warning']['title'] or res['warning']['title']
+#                res['warning']['message'] = message and message + '\n\n' + res['warning']['message'] or res['warning']['message']
+             
+#        result =  super(sale_order_line, self).product_id_change( cr, uid, ids, pricelist, product, qty,
+#            uom, qty_uos, uos, name, partner_id,
+#            lang, update_tax, date_order, packaging, fiscal_position, flag, context=context)
+ 
+#        if result.get('warning',False):
+#            res['warning']['title'] = title and title +' & '+result['warning']['title'] or result['warning']['title']
+#            res['warning']['message'] = message and message +'\n\n'+result['warning']['message'] or result['warning']['message']
+        
+        return res
+
+sale_order_line()
+
+class res_partner_budget(osv.osv):
+    _name = 'res.partner.budget'
+    _description = 'Partner budget'
+
+    _columns = { 
+        'year': fields.char('Year', size=4, required=True),
+        'budget': fields.float('Budget', digits=(12,2)),
+        'partner_id': fields.many2one('res.partner', 'Partner', required=True, select=True),
+    }
+
+sale_order_line()
+
+

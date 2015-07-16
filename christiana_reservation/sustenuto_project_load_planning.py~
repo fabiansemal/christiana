@@ -1,0 +1,69 @@
+# -*- encoding: utf-8 -*-
+
+from mx import DateTime
+import time
+
+from osv import fields, osv
+
+class project(osv.osv):
+	_name = "project.project"
+	_description = "Project"
+	_inherit = "project.project"		
+	_columns = {'load_ids' : fields.one2many('sustenuto.project.load', 'project_id', 'Loads'),
+	}
+
+project()
+
+class load_period(osv.osv):
+	_name = "sustenuto.project.load_period"
+	_description = "load period for load planning"	
+	_columns = {
+		'name' : fields.char("Title", size=250, required=True),
+		'start_date' : fields.date('Start date'),
+		'end_date' : fields.date('End date'),
+		'state' : fields.selection([('draft','Draft'),
+									('done','Done'),
+                        			('canceled','Canceled'),], 'State'),
+	}
+	_defaults={
+          'state': lambda *a: 'draft',
+	}
+	_order = 'start_date asc'
+  
+load_period()
+
+class project_load(osv.osv):
+	_name = "sustenuto.project.load"
+	_description = "load planning"	
+
+	def _calc_actual_hours(self, cr, uid, ids, name, args, context=None):
+        	res = {}
+        	for load in self.browse(cr, uid, ids):
+        	    res[load.id] = 0.0
+        	    sql_stat = "select sum(project_task_work.hours) as real_hours from project_task_work, sustenuto_project_load_period, sustenuto_project_load where sustenuto_project_load.id = %d and period_id = sustenuto_project_load_period.id and sustenuto_project_load.user = project_task_work.user_id and project_task_work.date >= start_date and project_task_work.date <= end_date" % (load.id, )
+        	    cr.execute(sql_stat)
+        	    sql_res = cr.dictfetchone()
+        	    res[load.id] = sql_res['actual_hours']
+        	return res
+	
+	_columns = {
+		'project_id': fields.many2one('project.project', 'Project', ondelete='cascade'),		
+		'analytic_account_id': fields.related('project_id', 'analytic_account_id',type='many2one', relation='account.analytic.account', store=True,string='Analytic account'),
+		'manager_id': fields.related('project_id', 'analytic_account_id', 'user_id', type='many2one', relation='res.users', string='Project Manager'),
+		
+		'period_id' : fields.many2one('sustenuto.project.load_period','Period',required=True),
+		'user' : fields.many2one('res.users', 'User'),
+		'planned_hours' : fields.float('Planned hours', digits=(12,2)),
+#		'real_hours' : fields.float('Real hours', digits=(12,2)), # TODO : fields.function() calculate from task.work
+        	'actual_hours': fields.function(_calc_actual_hours, string='Actual Hours', type='float', digits=(12,2)),
+		'state' : fields.selection([('draft','Draft'),
+									('done','Done'),
+                        			('canceled','Canceled'),], 'State'),
+	}
+	_defaults={
+          'state': lambda *a: 'draft',
+	}
+  
+project_load()
+
+

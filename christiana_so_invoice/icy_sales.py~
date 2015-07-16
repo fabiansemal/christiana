@@ -1,0 +1,319 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+##############################################################################
+#
+##############################################################################
+
+from openerp.osv import osv, fields
+
+class res_partner(osv.osv):
+    _inherit = 'res.partner'
+
+    _columns = {
+        'prospect': fields.boolean('Prospect'),
+        'mailing_allowed': fields.boolean('Mailing'),
+		'discount_ids': fields.one2many('res.partner.discount', 'partner_id', 'Kortingen'),
+		'sales_quotation_ids': fields.one2many('sale.order', 'partner_id', 'Offertes', select=True, domain=['|',('state','=','draft'),('state','=','cancel')]),
+		'sales_order_ids': fields.one2many('sale.order', 'partner_id', 'Offertes', select=True, domain=[('state','!=','draft'),('state','!=','cancel')]),
+		'sales_invoice_ids': fields.one2many('account.invoice', 'partner_id', 'Verkoopfacturen', select=True, domain=[('type','=','out_invoice')]),
+		'icy_task_ids': fields.one2many('project.task', 'partner_id', 'Taken', select=True),
+        'prepayment_pct': fields.integer('Aanbetaling %'),
+    }
+
+res_partner()
+
+class sale_order(osv.osv):
+    _inherit = 'sale.order'
+
+    _columns = {
+        'note_footer': fields.text('Voettekst'),
+        'date_expected': fields.date('Leverdatum'),
+        'date_callback': fields.date('Nabeldatum'),
+        'write_date': fields.datetime('Schrijfdatum'),
+        'first_quotation': fields.boolean('Met Offerte'),
+    }
+
+    def create(self, cr, uid, vals, context=None):
+        res = super(sale_order, self).create(cr, uid, vals, context=context)
+        prc = self.browse(cr, uid, res)
+        if prc.user_id:
+            if prc.partner_id and prc.date_callback:
+                task = self.pool.get('project.task')
+                task_id = task.create(cr, uid, {
+                    'date_deadline': prc.date_callback,
+                    'sequence': 1,
+                    'user_id': prc.user_id.id,
+                    'partner_id': prc.partner_id.id,
+                    'sale_order_id': prc.id,
+                    'company_id': prc.company_id.id,
+                    'state': 'open',
+                    'stage_id': 1,
+                    'name': 'Nabellen',
+                    'description': 'Nabellen offerte %s voor klant %s' % (prc.name, prc.partner_id.name), 
+                },context=context)
+        print 'TASK CREATED'
+        return res
+
+sale_order()
+
+class stock_move(osv.osv):
+    _inherit = 'stock.move'
+
+    def create(self, cr, uid, vals, context=None):
+        if 'sale_line_id' in vals and vals['sale_line_id']:
+            sale_line_obj = self.pool.get('sale.order.line')
+            sale_line = sale_line_obj.browse(cr, uid, vals['sale_line_id'])
+            if sale_line.date_expected:
+                vals.update({'date_expected':sale_line.date_expected})        
+            else:
+                vals.update({'date_expected':sale_line.order_id.date_expected})  
+        return super(stock_move, self).create(cr, uid, vals, context=context)
+
+stock_move()
+
+class sale_order_line(osv.osv):
+    _inherit = 'sale.order.line'
+
+    _columns = {
+        'date_expected': fields.date('Leverdatum'),
+        'discount1': fields.float('Klantkorting'),
+        'discount2': fields.float('Projectkorting'),
+        'date_tbd': fields.boolean('N.T.B.'),
+		'volume_dscnt_ids': fields.one2many('sale.order.line.volume.dscnt', 'order_line_id', 'Staffelprijzen'),
+    }
+
+    def onchange_icy_discount(self, cr, uid, ids, discount1, discount2, context=None):
+        res = {}
+        discount = 0.00
+        if discount1 == 0.00:
+            discount = discount2
+        else:
+            if discount2 == 0.00:
+                discount = discount1
+            else:
+                discount = discount1 + (discount2 * (100 - discount1) / 100)
+        res['discount'] = discount
+        return {'value':res}
+
+    def product_id_change(self, cr, uid, ids, pricelist, product, qty=0,
+            uom=False, qty_uos=0, uos=False, name='', partner_id=False,
+            lang=False, update_tax=True, date_order=False, packaging=False, fiscal_position=False, flag=False, context=None):
+
+        if not partner_id:
+            return False
+    	if not product:
+	        return False
+
+        res = super(sale_order_line, self).product_id_change( cr, uid, ids, pricelist, product, qty, uom, qty_uos, uos, name, partner_id, lang, update_tax, date_order, packaging, fiscal_position, flag, context=context)
+
+        discount1 = 0.00
+
+# partner category
+        sql_stat = '''select discount_pct 
+from res_partner_discount d, res_partner_res_partner_category_rel pcr 
+where d.partner_category_id = pcr.category_id 
+  and pcr.partner_id = %d 
+  and d.partner_id IS NULL 
+  and d.product_id IS NULL 
+  and d.product_category_id IS NULL''' % (partner_id, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# product category
+        sql_stat = '''select discount_pct 
+from res_partner_discount d, product_product pp, product_template pt 
+where d.product_category_id = pt.categ_id 
+  and pt.id = pp.product_tmpl_id 
+  and pp.id = %d 
+  and d.product_id IS NULL 
+  and d.partner_id IS NULL 
+  and d.partner_category_id IS NULL''' % (product, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# partner
+        sql_stat = '''select discount_pct 
+from res_partner_discount d
+where d.partner_id = %d 
+  and d.partner_category_id IS NULL 
+  and d.product_id IS NULL 
+  and d.product_category_id IS NULL''' % (partner_id, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# product
+        sql_stat = '''select discount_pct 
+from res_partner_discount d
+where d.product_id = %d 
+  and d.partner_category_id IS NULL 
+  and d.partner_id IS NULL 
+  and d.product_category_id IS NULL''' % (product, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# partner category and product category
+        sql_stat = '''select discount_pct 
+from res_partner_discount d, res_partner_res_partner_category_rel pcr, product_product pp, product_template pt  
+where d.partner_category_id = pcr.category_id 
+  and pcr.partner_id = %d 
+  and d.product_category_id = pt.categ_id 
+  and pt.id = pp.product_tmpl_id 
+  and pp.id = %d 
+  and d.partner_id IS NULL 
+  and d.product_id IS NULL''' % (partner_id, product, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# partner and product category
+        sql_stat = '''select discount_pct 
+from res_partner_discount d, product_product pp, product_template pt  
+where d.partner_id = %d 
+  and d.product_category_id = pt.categ_id 
+  and pt.id = pp.product_tmpl_id 
+  and pp.id = %d 
+  and d.partner_category_id IS NULL 
+  and d.product_id IS NULL''' % (partner_id, product)
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# partner category and product
+        sql_stat = '''select discount_pct 
+from res_partner_discount d, res_partner_res_partner_category_rel pcr 
+where d.product_id = %d 
+  and d.partner_category_id = pcr.category_id 
+  and pcr.partner_id = %d 
+  and d.partner_id IS NULL 
+  and d.product_category_id IS NULL''' % (product, partner_id, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+# partner and product
+        sql_stat = '''select discount_pct 
+from res_partner_discount d
+where d.partner_id = %d 
+  and d.product_id = %d 
+  and d.partner_category_id IS NULL 
+  and d.product_category_id IS NULL''' % (partner_id, product, )
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount1 = sql_res['discount_pct']
+
+        res['value']['discount1'] = discount1
+        return res
+
+sale_order_line()
+
+class sale_order_line_volume_dscnt(osv.osv):
+    _name = 'sale.order.line.volume.dscnt'
+
+    _columns = {
+        'order_line_id': fields.many2one('sale.order.line', 'Orderlijn', select=True),
+        'qty_discount': fields.float('Hoeveelheid'),
+        'volume_price': fields.float('Prijs'),
+    }
+
+sale_order_line_volume_dscnt()
+
+class project_task(osv.osv):
+    _inherit = 'project.task'
+
+    _columns = {
+        'sale_order_id': fields.many2one('sale.order', 'Offerte/Order', select=True),
+        'icy_lead_id': fields.many2one('crm.lead', 'Lead', select=True),
+    }
+
+project_task()
+
+class res_partner_discount(osv.osv):
+    _name = 'res.partner.discount'
+
+    _columns = {
+        'partner_id': fields.many2one('res.partner', 'Partner', select=True),
+        'partner_category_id': fields.many2one('res.partner.category', 'Partner Categorie', select=True),
+        'product_id': fields.many2one('product.product', 'Product', select=True),
+        'product_category_id': fields.many2one('product.category', 'Product Categorie', select=True),
+        'discount_pct': fields.float('Korting', select=True),
+    }
+
+res_partner_discount()
+
+class product_product(osv.osv):
+    _inherit = 'product.product'
+
+    _columns = {
+		'discount_ids': fields.one2many('res.partner.discount', 'product_id', 'Kortingen'),
+    }
+
+product_product()
+
+class product_category(osv.osv):
+    _inherit = 'product.category'
+
+    _columns = {
+		'discount_ids': fields.one2many('res.partner.discount', 'product_category_id', 'Kortingen'),
+    }
+
+product_category()
+
+class res_partner_category(osv.osv):
+    _inherit = 'res.partner.category'
+
+    _columns = {
+		'discount_ids': fields.one2many('res.partner.discount', 'partner_category_id', 'Kortingen'),
+    }
+
+res_partner_category()
+
+class crm_lead(osv.osv):
+    _inherit = 'crm.lead'
+
+    def onchange_zip_id(self, cr, uid, ids, zip_id, context=None):
+        res = {}
+        if not zip_id:
+            res['street'] = ""
+            res['city'] = ""
+            res['country_id'] = ""
+            res['zip'] = ""
+        else:
+            city_obj = self.pool.get('res.country.city')
+            city = city_obj.browse(cr, uid, zip_id, context=context)
+            res['city'] = city.name
+            res['country_id'] = city.country_id.id
+            res['zip'] = city.zip
+        return {'value':res}
+
+    def onchange_street_id(self, cr, uid, ids, zip_id, street_id, street_nbr, street_bus, context=None):
+        res = {}
+        if not street_id:
+            res['street'] = ""
+        else:
+            street_obj = self.pool.get('res.country.city.street')
+            street = street_obj.browse(cr, uid, street_id, context=context)
+            if street_nbr and street_bus:
+                res['street'] = street.name + ' ' + street_nbr + street_bus
+            else:
+                if street_nbr:
+                    res['street'] = street.name + ' ' + street_nbr
+                else:
+                    res['street'] = street.name
+        return {'value':res}
+
+    _columns = {
+		'icy_task_ids': fields.one2many('project.task', 'icy_lead_id', 'Taken', select=True),
+		'zip_id': fields.many2one('res.country.city', 'Postcode'),
+		'street_id': fields.many2one('res.country.city.street', 'Straat'),
+		'street_nbr': fields.char('Huisnummer', size=16),
+		'street_bus': fields.char('Bus', size=16),
+    }
+
+crm_lead
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+

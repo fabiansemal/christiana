@@ -1,0 +1,158 @@
+# -*- coding: utf-8 -*-
+##############################################################################
+#
+#    Smart Solution bvba
+#    Copyright (C) 2010-Today Smart Solution BVBA (<http://www.smartsolution.be>).
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+############################################################################## 
+
+from osv import osv, fields
+from datetime import datetime
+import csv
+import base64
+from tools.translate import _
+
+class sale_order_lines_import_wizard(osv.TransientModel):
+
+    _name = "sale.order.lines.import.wizard"
+
+    _columns = {
+        'lines_file': fields.binary('Sale Order Lines File', required=True),
+    }
+
+    def sale_order_lines_import(self, cr, uid, ids, context=None):
+        """Import sale order lines from a file"""
+        so = self.pool.get('sale.order')
+        so_rec = so.browse(cr, uid, context['active_id'])
+        partner_id = so_rec.partner_id.id
+        max_book = so_rec.partner_id.max_qty_per_book
+        fiscal_pos_obj = self.pool.get('account.fiscal.position')
+
+        print "WIZ IDS:",ids
+        print "WIZ CONTEXT:",context
+
+        obj = self.browse(cr, uid, ids)[0]
+
+        fname = '/tmp/csv_temp_' + datetime.today().strftime('%Y%m%d%H%M%S') + '.csv'
+        fp = open(fname,'w+')
+        fp.write(base64.decodestring(obj.lines_file))
+        fp.close()
+        fp = open(fname,'rU')
+        reader = csv.reader(fp, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+        entry_vals = []
+
+        warning = False
+        title = ''
+        message = ''
+
+        for row in reader:
+            print "READLINE:",reader.line_num
+            if reader.line_num <= 1:
+                continue
+            print "ROW:",row
+
+            # Find the company
+            company = self.pool.get('res.users').browse(cr, uid, uid).company_id.id             
+
+            # Find the product id and product name
+            product_id = False
+            if row[0] != "":
+                print "PRODUCT:",row[0]
+                product_ids = self.pool.get('product.product').search(cr, uid, [('default_code','=',row[0].replace('-','').replace(' ','').replace('_','').replace('.',''))]) 
+                print "PRODUCTS:",product_ids
+                if row[4] == '':
+                    row[4] = '0'
+                if product_ids:
+                    if len(product_ids) > 1:
+                        raise osv.except_osv(_('Multiple Products found !'), _('Several products where found for that code %s'%(row[0])))
+                    product_id = product_ids[0]
+                    product_name = self.pool.get('product.product').browse(cr, uid, product_id).name
+                    product_price = self.pool.get('product.product').browse(cr, uid, product_id).list_price
+                    taxes = self.pool.get('product.product').browse(cr, uid, product_id).taxes_id
+                    tax = fiscal_pos_obj.map_tax(cr, uid, so_rec.partner_id.property_account_position, taxes)
+                    author_id = self.pool.get('product.product').browse(cr, uid, product_id).author_id.id
+                    isbn_number = self.pool.get('product.product').browse(cr, uid, product_id).default_code
+                    voorraadcode = self.pool.get('product.product').browse(cr, uid, product_id).voorraadcode
+                    price_excel = float(row[4])
+                    name_excel = row[1]
+                    booklen = len(product_name.upper().replace('-','').replace(',','').replace('DE ','').replace('EEN ','').replace('HET ','').replace(' ',''))
+                    if product_name.upper().replace('-','').replace(',','').replace('DE ','').replace('EEN ','').replace('HET ','').replace(' ','') == row[1].upper().replace('-','').replace(',','').replace('DE ','').replace('EEN ','').replace('HET ','').replace(' ','').replace('[BOEK]','')[:booklen]:
+                        boolean_name_excel = True
+                    else:
+                        boolean_name_excel = False
+                else:
+                    # If no product found
+                    product_name = row[0] + ' / ' + row[1] + '/' + row[2]
+                    product_price = 0.00
+                    price_excel = float(row[4])
+                    name_excel = row[1]
+                    boolean_name_excel = True
+                    tax = {}
+                    author_id = 0
+                    isbn_number = row[0]
+                    voorraadcode = ''
+
+                quantity = 1.00
+                if row[3] != "":
+                    quantity = float(row[3].replace(',','.'))
+
+                discount = 0.00
+
+# partner and product
+                sql_stat = '''select discount_pct 
+from res_partner_discount d, product_product p
+where d.partner_id = %d 
+  and p.id = %d 
+  and d.awso_code = p.awso_code''' % (partner_id, product_id, )
+                cr.execute(sql_stat)
+                for sql_res in cr.dictfetchall():
+                    discount = sql_res['discount_pct']
+
+                if quantity > max_book:
+                    if message == '':
+                        title = 'Maximum aantal boeken overschreden voor ISBN nummers:'
+                        message = isbn_number
+                    else:
+                        message = ('%s, %s') % (message, isbn_number, )
+                    
+                vals = {
+                    'order_id': context['active_id'],
+                    'company_id': company,
+                    'product_id': product_id,
+                    'name': product_name,
+                    'product_uom_qty': quantity,
+                    'price_unit': product_price,
+                    'price_excel': price_excel,
+                    'name_excel': name_excel,
+                    'boolean_name_excel': boolean_name_excel,
+                    'discount': discount,
+                    'tax_id': [(6,0,tax )],
+                    'author_id': author_id,
+                    'isbn_number': isbn_number,
+                    'voorraadcode': voorraadcode,
+                }
+                entry_vals.append(vals)
+
+        print "ENTRYVALS:",entry_vals
+        for line_vals in entry_vals:
+            line_id = self.pool.get('sale.order.line').create(cr, uid, line_vals)
+
+        if message != '':
+            raise osv.except_osv(_(title), message)
+
+        return True
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

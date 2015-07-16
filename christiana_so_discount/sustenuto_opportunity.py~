@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+##############################################################################
+#
+##############################################################################
+
+from osv import osv, fields
+
+class res_partner(osv.osv):
+    _name = 'res.partner'
+    _inherit = 'res.partner'
+
+    _columns = {
+        'partner': fields.boolean('Partner'),
+        'competitor': fields.boolean('Competitor'),
+    }
+
+res_partner()
+
+class crm_lead(osv.osv):
+    _name = 'crm.lead'
+    _inherit = 'crm.lead'
+
+    def onchange_budget(self, cr, uid, ids, budget_int, budget_ext, budget_cost):
+        res = {}
+        res['planned_revenue'] = budget_int + budget_ext + budget_cost
+        
+        return {'value':res}
+
+    _columns = {
+    }
+
+    _sql_constraint = [
+        ('name_unique', 'unique(name)', 'Opportunity name must be unique'),
+    ]
+
+crm_lead()
+
+
+class project_task(osv.osv):
+    _name = "project.task"
+    _inherit = "project.task"
+
+    _columns = {
+        'product_id': fields.many2one('product.product', 'Product', select=True),
+        'sale_order_id': fields.related('sale_line_id', 'order_id', type='many2one', relation='sale.order', readonly=True, string='Sale Order'),
+        'action_date': fields.date('Action Date'),
+        'reference_date': fields.date('Reference Date'),
+    }
+
+    def create(self, cr, uid, vals, context=None):
+        if 'procurement_id' in vals and vals['procurement_id']:
+            prc_id = vals['procurement_id']
+            prc = self.pool.get('procurement.order').browse(cr, uid, prc_id)
+            vals['product_id'] = prc.product_id.id
+            vals['partner_id'] = prc.sale_id.partner_id.id
+        return super(project_task, self).create(cr, uid, vals, context=context)
+
+project_task()
+
+class sale_order(osv.osv):
+    _name = 'sale.order'
+    _inherit = 'sale.order'
+
+    _columns = {
+        'budget_int_services': fields.float('Budget Int. Services'),
+        'budget_ext_services': fields.float('Budget Ext. Services'),
+        'budgeted_costs': fields.float('Budgeted Costs'),
+    }
+
+    def create(self, cr, uid, vals, context=None):
+        if 'origin' in vals and vals['origin']:
+            lead_name = vals['origin'][13:]
+            opp_id = self.pool.get('crm.lead').search(cr, uid, [('id','=',lead_name)])
+            if opp_id:
+                opp = self.pool.get('crm.lead').browse(cr, uid, opp_id)[0]
+                vals['budget_int_services'] = opp.x_budget_int_services
+                vals['budget_ext_services'] = opp.x_budget_ext_services
+                vals['budgeted_costs'] = opp.x_budgeted_costs
+                vals['x_inv_type'] = opp.x_inv_type
+                vals['x_contractor'] = opp.x_contractor2.id
+                vals['x_abstract'] = opp.x_abstract
+                vals['service_portfolio_ids'] = []
+                pf_temp = []
+                for pf in opp.service_portfolio_ids:
+                    pf_temp.append(pf.id)
+                vals['service_portfolio_ids'] = [(6,0,pf_temp)]
+        return super(sale_order, self).create(cr, uid, vals, context=context)
+
+sale_order()
+
+class sale_order_line(osv.osv):
+    _name = 'sale.order.line'
+    _inherit = 'sale.order.line'
+
+    _columns = {
+        'earned_rate': fields.float('Earned Rate'),    
+    }
+
+    def product_id_change(self, cr, uid, ids, pricelist_id, product, qty=0, uom=False, qty_uos=0, uos=False, name='', partner_id=False, lang=False, update_tax=True, date_order=False, packaging=False, fiscal_position=False, flag=False, context=None):
+
+        res = super(sale_order_line, self).product_id_change(cr, uid, ids, pricelist_id, product, qty=qty, uom=uom, qty_uos=qty_uos, uos=uos, name=name, partner_id=partner_id, lang=lang, update_tax=update_tax, date_order=date_order, packaging=packaging, fiscal_position=fiscal_position, flag=flag, context=context)
+        if 'price_unit' in res['value']:
+            res['value']['earned_rate'] = res['value']['price_unit']
+        return res
+
+sale_order_line()
+
+class project_project(osv.osv):
+    _name = 'project.project'
+    _inherit = 'project.project'
+
+    _columns = {
+        'sales_order_amount': fields.float('Sales Order Amount'),
+    }
+
+    def create(self, cr, uid, vals, context=None):
+        if 'procurement_id' in vals and vals['procurement_id']:
+            proc = self.pool.get('procurement.order').browse(cr, uid, vals['procurement_id'])
+            if proc:
+                vals['x_budget_int_services'] = proc.sale_id.budget_int_services
+                vals['x_budget_ext_services'] = proc.sale_id.budget_ext_services
+                vals['x_budgeted_costs'] = proc.sale_id.budgeted_costs
+                vals['budget_int_services'] = proc.sale_id.budget_int_services
+                vals['budget_ext_services'] = proc.sale_id.budget_ext_services
+                vals['budgeted_costs'] = proc.sale_id.budgeted_costs
+                vals['sales_order_amount'] = proc.sale_id.amount_untaxed
+                vals['x_inv_type'] = proc.sale_id.x_inv_type
+                vals['x_abstract'] = proc.sale_id.x_abstract
+                vals['x_end_partner'] = proc.sale_id.x_contractor.id
+                pf_temp = []
+                for pf in proc.sale_id.service_portfolio_ids:
+                    pf_temp.append(pf.id)
+                vals['service_portfolio_ids'] = [(6,0,pf_temp)]
+        return super(project_project, self).create(cr, uid, vals, context=context)
+
+project_project()
+
+class account_analytic_account(osv.osv):
+    _name = 'account.analytic.account'
+    _inherit = 'account.analytic.account'
+
+    def create(self, cr, uid, vals, context=None):
+        if 'name' in vals and vals['name']:
+            sql_stat = "select partner_id, pricelist_id, partner_order_id as contact_id, user_id, x_abstract from sale_order where name = '%s'" % vals['name'].replace(':','')
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                vals['partner_id'] = int(sql_res['partner_id'])
+                vals['pricelist_id'] = int(sql_res['pricelist_id'])
+                vals['contact_id'] = int(sql_res['contact_id'])
+                vals['user_id'] = int(sql_res['user_id'])
+                vals['description'] = sql_res['x_abstract']
+        return super(account_analytic_account, self).create(cr, uid, vals, context=context)
+
+    _columns = {
+    }
+
+account_analytic_account()
+
+class project_work(osv.osv):
+    _name = 'project.task.work'
+    _inherit = 'project.task.work'
+
+    def create(self, cr, uid, ids, vals, *args, **kwargs):
+        res = super(project_work, self).create(cr, uid, ids, vals, *args, **kwargs)
+
+        if 'task_id' in ids and ids['task_id']:
+            task = self.pool.get('project.task').browse(cr, uid, ids['task_id'])
+            if task and task.product_id:
+                obj = self.browse(cr, uid, res)
+                self.pool.get('account.analytic.line').write(cr, uid, [obj.hr_analytic_timesheet_id.line_id.id], {'product_id':task.product_id.id})
+        return res
+
+project_work()
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

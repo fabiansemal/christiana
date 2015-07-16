@@ -1,0 +1,30 @@
+# -*- encoding: utf-8 -*-
+
+from mx import DateTime
+import time
+
+from openerp.osv import fields, osv
+import openerp.addons.decimal_precision as dp
+from openerp.tools.translate import _
+
+class product_product(osv.osv):
+    _inherit = "product.product"
+
+    _columns = {
+        'replaced_by_id': fields.many2one('product.product', 'Replaced By', select=True),
+        'maintenance': fields.selection((('ap','Applicable'),('na','Not Applicable'),('ur','Upon Request')),'Maintenance'),
+
+    }
+
+product_product()
+
+class product_template(osv.osv):
+    _inherit = "product.template"
+    
+    _columns = {
+        'unique_name': fields.char('Unique Name', size=128, required=True, translate=True),
+    }
+
+product_template()
+
+

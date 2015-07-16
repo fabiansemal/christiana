@@ -1,0 +1,201 @@
+# -*- coding: utf-8 -*-
+##############################################################################
+#
+#    Smart Solution bvba
+#    Copyright (C) 2010-Today Smart Solution BVBA (<http://www.smartsolution.be>).
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+############################################################################## 
+
+from osv import osv, fields
+from datetime import datetime
+import csv
+import base64
+from tools.translate import _
+
+class sale_order_lines_import_wizard(osv.TransientModel):
+
+    _name = "sale.order.lines.import.wizard"
+
+    _columns = {
+        'lines_file': fields.binary('Sale Order Lines File', required=True),
+    }
+
+    def sale_order_lines_import(self, cr, uid, ids, context=None):
+        """Import sale order lines from a file"""
+        for so in self.browse(cr, uid, ids, context=context):
+            partner_id = so.partner_id.id
+
+        print "WIZ IDS:",ids
+        print "WIZ CONTEXT:",context
+
+        obj = self.browse(cr, uid, ids)[0]
+
+        fname = '/tmp/csv_temp_' + datetime.today().strftime('%Y%m%d%H%M%S') + '.csv'
+        fp = open(fname,'w+')
+        fp.write(base64.decodestring(obj.lines_file))
+        fp.close()
+        fp = open(fname,'rU')
+        reader = csv.reader(fp, delimiter=";", quoting=csv.QUOTE_NONE)
+        entry_vals = []
+
+        for row in reader:
+            print "READLINE:",reader.line_num
+            if reader.line_num <= 1:
+                continue
+            print "ROW:",row
+
+            # Find the company
+            company = self.pool.get('res.users').browse(cr, uid, uid).company_id.id             
+
+            # Find the product id and product name
+            product_id = False
+            if row[0] != "":
+                print "PRODUCT:",row[0]
+                product_ids = self.pool.get('product.product').search(cr, uid, [('default_code','=',row[0].replace(' ','').replace('_','').replace('.',''))]) 
+                print "PRODUCTS:",product_ids
+                if product_ids:
+                    if len(product_ids) > 1:
+                        raise osv.except_osv(_('Multiple Products found !'), _('Several products where found for that code %s'%(row[0])))
+                    product_id = product_ids[0]
+                    product_name = self.pool.get('product.product').browse(cr, uid, product_id).name
+                    product_price = self.pool.get('product.product').browse(cr, uid, product_id).list_price
+                else:
+                    # If no product found
+                    product_name = row[0] + ' / ' + row[1] + '/' + row[2]
+                    product_price = float(row[4])
+
+            if row[3] != "":
+                quantity = float(row[3].replace(',','.'))
+
+            discount = 0.00
+
+# partner category
+            sql_stat = '''select discount_pct 
+from res_partner_discount d, res_partner_res_partner_category_rel pcr 
+where d.partner_category_id = pcr.category_id 
+  and pcr.partner_id = %d 
+  and d.partner_id IS NULL 
+  and d.product_id IS NULL 
+  and d.product_category_id IS NULL''' % (partner_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# product category
+            sql_stat = '''select discount_pct 
+from res_partner_discount d, product_product pp, product_template pt 
+where d.product_category_id = pt.categ_id 
+  and pt.id = pp.product_tmpl_id 
+  and pp.id = %d 
+  and d.product_id IS NULL 
+  and d.partner_id IS NULL 
+  and d.partner_category_id IS NULL''' % (product_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# partner
+            sql_stat = '''select discount_pct 
+from res_partner_discount d
+where d.partner_id = %d 
+  and d.partner_category_id IS NULL 
+  and d.product_id IS NULL 
+  and d.product_category_id IS NULL''' % (partner_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# product
+            sql_stat = '''select discount_pct 
+from res_partner_discount d
+where d.product_id = %d 
+  and d.partner_category_id IS NULL 
+  and d.partner_id IS NULL 
+  and d.product_category_id IS NULL''' % (product_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# partner category and product category
+            sql_stat = '''select discount_pct 
+from res_partner_discount d, res_partner_res_partner_category_rel pcr, product_product pp, product_template pt  
+where d.partner_category_id = pcr.category_id 
+  and pcr.partner_id = %d 
+  and d.product_category_id = pt.categ_id 
+  and pt.id = pp.product_tmpl_id 
+  and pp.id = %d 
+  and d.partner_id IS NULL 
+  and d.product_id IS NULL''' % (partner_id, product_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# partner and product category
+            sql_stat = '''select discount_pct 
+from res_partner_discount d, product_product pp, product_template pt  
+where d.partner_id = %d 
+  and d.product_category_id = pt.categ_id 
+  and pt.id = pp.product_tmpl_id 
+  and pp.id = %d 
+  and d.partner_category_id IS NULL 
+  and d.product_id IS NULL''' % (partner_id, product_id)
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# partner category and product
+            sql_stat = '''select discount_pct 
+from res_partner_discount d, res_partner_res_partner_category_rel pcr 
+where d.product_id = %d 
+  and d.partner_category_id = pcr.category_id 
+  and pcr.partner_id = %d 
+  and d.partner_id IS NULL 
+  and d.product_category_id IS NULL''' % (product_id, partner_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+# partner and product
+            sql_stat = '''select discount_pct 
+from res_partner_discount d
+where d.partner_id = %d 
+  and d.product_id = %d 
+  and d.partner_category_id IS NULL 
+  and d.product_category_id IS NULL''' % (partner_id, product_id, )
+            cr.execute(sql_stat)
+            for sql_res in cr.dictfetchall():
+                discount = sql_res['discount_pct']
+
+            vals = {
+                'order_id': context['active_id'],
+                'company_id': company,
+                'product_id': product_id,
+                'name': product_name,
+                'product_uom_qty': quantity,
+                'price_unit': product_price,
+                'discount': discount,
+            }
+            entry_vals.append(vals)
+
+        print "ENTRYVALS:",entry_vals
+
+        for line_vals in entry_vals:
+            line_id = self.pool.get('sale.order.line').create(cr, uid, line_vals)
+
+        return True
+
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

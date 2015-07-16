@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+
+        <record id="view_sale_order_lines_import_wizard" model="ir.ui.view">
+            <field name="name">Import Sale Order Lines</field>
+            <field name="model">sale.order.lines.import.wizard</field>
+            <field name="arch" type="xml">
+            <form string="Import Sale Order Lines" version="7.0">
+                <group colspan="4">
+                    <!--    <label for="lines_file" string="Entry Lines File"/>-->
+                    <field name="lines_file"/>
+                </group>
+                <footer>
+                 <div name="so_lines_import">
+                        <button name="sale_order_lines_import" type="object" string="Import File" class="oe_highlight"/>
+                        <button string="Cancel" class="oe_link" special="cancel" />
+                 </div>
+                 </footer>
+            </form>
+            </field>
+        </record>
+
+        <record id="act_so_lines_import_wizard" model="ir.actions.act_window">
+            <field name="name">Import Sale Order Lines</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">sale.order.lines.import.wizard</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_sale_order_lines_import_wizard"/>
+            <field name="target">new</field>
+        </record>
+        
+        <record id="view_sale_order_tree_lines_import_inherit" model="ir.ui.view">
+            <field name="name">view.account.tree.move.lines_import.inherit</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <button name="action_button_confirm" position="after">
+                    <button name="%(christiana_sale_order_lines_import.act_so_lines_import_wizard)d" string="Import Sale Order Lines"
+                            type="action" class="oe_highlight" states="draft"/>
+                </button>
+            </field>
+        </record>
+
+    </data>
+</openerp>

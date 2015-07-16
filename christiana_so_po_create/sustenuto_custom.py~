@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+##############################################################################
+#
+##############################################################################
+
+from osv import osv, fields
+
+class res_partner(osv.osv):
+    _name = 'res.partner'
+    _inherit = 'res.partner'
+
+    _columns = {
+        'partner': fields.boolean('Partner'),
+        'competitor': fields.boolean('Competitor'),
+        'compl_name1': fields.char('Compl. Name 1', size=64),
+        'compl_name2': fields.char('Compl. Name 2', size=64),
+        'compl_name3': fields.char('Compl. Name 3', size=64),
+    }
+
+res_partner()
+
+class crm_lead(osv.osv):
+    _inherit = 'crm.lead'
+
+    def onchange_budget(self, cr, uid, ids, budget_int, budget_ext, budget_cost):
+        res = {}
+        res['planned_revenue'] = budget_int + budget_ext + budget_cost
+        
+        return {'value':res}
+
+    _columns = {
+        'title_lead': fields.char('Title', size=64, translate=True),
+        'abstract': fields.text('Abstract', translate=True),
+        'budget_int_services': fields.float('Budget Int. Services'),
+        'budget_ext_services': fields.float('Budget Ext. Services'),
+        'budget_costs': fields.float('Budget Costs'),
+        'invoicing_method': fields.selection((('fp','Fixed Price'),('ctm','Capped Time & Materials')),'Invoicing Method'),
+        'contractor_id': fields.many2one('res.partner', 'Contractor', select=True),
+   }
+
+crm_lead()
+
+class sale_order(osv.osv):
+    _inherit = 'sale.order'
+
+    def create(self, cr, uid, vals, context=None):
+        if 'origin' in vals and vals['origin']:
+            lead_name = vals['origin'][13:]
+            opp_id = self.pool.get('crm.lead').search(cr, uid, [('id','=',lead_name)])
+            if opp_id:
+                opp = self.pool.get('crm.lead').browse(cr, uid, opp_id)[0]
+                vals['budget_int_services'] = opp.budget_int_services
+                vals['budget_ext_services'] = opp.budget_ext_services
+                vals['budget_costs'] = opp.budget_costs
+                vals['invoicing_method'] = opp.invoicing_method
+                vals['contractor_id'] = opp.contractor_id.id
+                vals['abstract'] = opp.abstract
+                vals['title_lead'] = opp.title_lead
+                vals['service_portfolio_ids'] = []
+                pf_temp = []
+                for pf in opp.service_portfolio_ids:
+                    pf_temp.append(pf.id)
+                vals['service_portfolio_ids'] = [(6,0,pf_temp)]
+        return super(sale_order, self).create(cr, uid, vals, context=context)
+
+    _columns = {
+        'title_lead': fields.char('Title', size=64, translate=True),
+        'abstract': fields.text('Abstract', translate=True),
+        'budget_int_services': fields.float('Budget Int. Services'),
+        'budget_ext_services': fields.float('Budget Ext. Services'),
+        'budget_costs': fields.float('Budget Costs'),
+        'invoicing_method': fields.selection((('fp','Fixed Price'),('ctm','Capped Time & Materials')),'Invoicing Method'),
+        'contractor_id': fields.many2one('res.partner', 'Contractor', select=True),
+        'contractor_budget': fields.float('Contractor Budget'),
+   }
+
+sale_order()
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+
+# sql statements:
+#
+# update crm_lead set title_lead = name;
+# update crm_lead set budget_int_services = planned_revenue;
+# update crm_lead set name = ('2012/' || cast(id as integer));
+
+

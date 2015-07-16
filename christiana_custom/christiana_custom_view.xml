@@ -1,0 +1,882 @@
+<?xml version="1.0" ?>
+
+<openerp>
+    <data>
+
+    <record model="ir.ui.view" id="christiana_product_form">
+        <field name="name">christiana.product.form</field>
+        <field name="model">product.product</field>
+		<field name="inherit_id" ref="stock.view_normal_procurement_locations_form"/> 
+        <field name="arch" type="xml">
+            <field name="default_code" position="replace"/>
+            <field name="weight" position="replace"/>
+            <div name="ean" position="replace"/>
+            <field name="list_price" position="replace"/> 
+            <field name="standard_price" position="replace"/>
+            <page string="Information" position="before"> 
+                <page string="Boek Informatie">
+                    <group>
+                        <group>
+                            <field name="default_code"/>
+                            <field name="substituut_isbn"/>
+                            <field name="set_isbn"/>
+                            <field name="uitgevernummer"/>
+                            <field name="distributeur"/>
+                            <field name="fondscode"/>
+                        </group> 
+                        <group>
+                            <field name="author_id"/>
+                            <field name="co_author_id"/>
+                            <field name="release_date"/>
+                            <field name="print_number"/>
+                            <field name="taalcode"/>
+                            <field name="oorsprtaal"/>
+                        </group> 
+                        <group>
+                            <field name="awso_code"/>
+                            <field name="uitgave_soort"/>
+                            <field name="uitvoering"/>
+                            <field name="sectietitel"/>
+                        </group> 
+                        <group>
+                            <field name="artikel_status"/>
+                            <field name="voorraadcode"/>
+                            <field name="netwerkcode"/>
+                            <field name="list_price"/>
+                            <field name="combined_vat"/>
+                            <field name="btw21"/>
+                        </group> 
+                        <group>
+                            <field name="formaat"/>
+                            <field name="weight"/>
+                            <field name="avi_niveau"/>
+                        </group> 
+                        <group>
+                            <field name="nbr_paginas"/>
+                            <field name="illustraties"/>
+                            <field name="bijlage"/>
+                        </group> 
+                    </group> 
+                </page>
+                <page string="Titels">
+                    <group>
+                        <group>
+                            <field name="hoofdtitel"/>
+                            <field name="ondertitel"/>
+                            <field name="deeltitel"/>
+                        </group> 
+                        <group>
+                            <field name="reeksnaam"/>
+                            <field name="reeksnummer"/>
+                            <field name="oorsprtitel"/>
+                            <field name="imprint"/>
+                        </group> 
+                    </group> 
+                </page>
+                <page string="Andere Boek Informatie">
+                    <group>
+                        <group>
+                            <field name="ean13"/>
+                            <field name="co_editie"/>
+                            <field name="standard_price"/> 
+                        </group> 
+                        <group>
+                            <field name="jaar_release1"/>
+                            <field name="depotnummer"/>
+                        </group> 
+                    </group> 
+                </page>
+            </page>
+            <field name="incoming_qty" position="before">
+            	<field name="reservation_count"></field>
+            </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_product_tree_view">
+        <field name="name">christiana.product.tree.view</field>
+        <field name="model">product.product</field>
+	<field name="inherit_id" ref="product.product_product_tree_view"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+         	<field name="qty_available" position="after"> 
+                <field name="reservation_count"></field>
+            	<field name="outgoing_qty"></field>
+            	<field name="incoming_qty"></field>
+            </field>
+            <field name="virtual_available" position="attributes"> 
+                <attribute name="invisible">True</attribute>
+            </field>
+            <field name="name" position="after">
+                <field name="author_id"/>
+                <field name="distributeur"/>
+                <field name="voorraadcode"/>
+                <field name="uitvoering"/>
+            </field>
+        </field>
+    </record>
+
+<!--    <record model="ir.ui.view" id="christiana_product_procurement_form">
+        <field name="name">christiana.product.procurement.form</field>
+        <field name="model">product.product</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <button name="340" position="attributes"> 
+                <attribute name="invisible">True</>
+            </button>
+            <button name="349" position="attributes">
+                <attribute name="invisible">True</>
+            </button>
+        </field>
+    </record> -->
+
+    <record model="ir.ui.view" id="view_distributor_tree">
+        <field name="name">view.distributor.tree</field>
+        <field name="model">res.distributor</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="Distributeurs">
+                <field name="name"/>
+                <field name="supplier_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="view_distributor_form">
+        <field name="name">view.distributor.form</field>
+        <field name="model">res.distributor</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="distributor">
+		<field name="name"/>
+                <field name="supplier_id"/>
+            </form>
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_distributor">
+        <field name="name">Distributors</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.distributor</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_distributor_tree"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_distributor_tree_view">
+        <field name="sequence">10</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_distributor_tree"/>
+        <field name="act_window_id" ref="action_distributor"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_distributor_form_view">
+        <field name="sequence">20</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_distributor_form"/>
+        <field name="act_window_id" ref="action_distributor"/>
+    </record>
+
+    <menuitem name="Distributeurs" id="menu_distributor_form" action="action_distributor" parent = "base.menu_base_config" sequence="150"/>
+
+    <record model="ir.ui.view" id="view_author_tree">
+        <field name="name">view.author.tree</field>
+        <field name="model">res.author</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="Authors">
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="view_author_form">
+        <field name="name">view.author.form</field>
+        <field name="model">res.author</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="author">
+		<field name="name"/>
+                <separator string="Products" colspan="4" />
+                <field name="product_ids" colspan="4" nolabel="1" />
+            </form>
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_author">
+        <field name="name">Authors</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.author</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_author_tree"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_author_tree_view">
+        <field name="sequence">10</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_author_tree"/>
+        <field name="act_window_id" ref="action_author"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_author_form_view">
+        <field name="sequence">20</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_author_form"/>
+        <field name="act_window_id" ref="action_author"/>
+    </record>
+
+    <menuitem name="Authors" id="menu_author_form" action="action_author" parent = "base.menu_base_config" sequence="100"/>
+
+    <record model="ir.ui.view" id="view_co_author_tree">
+        <field name="name">view.co.author.tree</field>
+        <field name="model">res.co.author</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="Co-Authors">
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="view_co_author_form">
+        <field name="name">view.co.author.form</field>
+        <field name="model">res.co.author</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="co_author">
+		<field name="name"/>
+                <separator string="Products" colspan="4" />
+                <field name="product_ids" colspan="4" nolabel="1" />
+            </form>
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_co_author">
+        <field name="name">Co_Authors</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.co.author</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_co_author_tree"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_co_author_tree_view">
+        <field name="sequence">10</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_co_author_tree"/>
+        <field name="act_window_id" ref="action_co_author"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_co_author_form_view">
+        <field name="sequence">20</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_co_author_form"/>
+        <field name="act_window_id" ref="action_co_author"/>
+    </record>
+
+    <menuitem name="Co-Authors" id="menu_co_author_form" action="action_co_author" parent = "base.menu_base_config" sequence="110"/>
+
+    <record model="ir.ui.view" id="christiana_sale_order_form">
+        <field name="name">christiana.sale.order.form</field>
+        <field name="model">sale.order</field>
+	    <field name="inherit_id" ref="sale.view_order_form"/> 
+        <field name="arch" type="xml">
+            <data>
+                <field name="date_order" position="before">
+                	<field name="zichtzending"/>
+			<field name="invoice_text"/>
+                </field>
+                <xpath expr="/form/sheet/notebook/page[@string='Order Lines']/field[@name='order_line']/tree[@string='Sales Order Lines']/field[@name='product_id']" position="before">
+                	   <field name="isbn_number" on_change="isbn_change(isbn_number, context)"/>
+                </xpath>
+<!--                <xpath expr="/form/sheet/notebook/page[@string='Order Lines']/field[@name='order_line']/tree[@string='Sales Order Lines']/field[@name='product_id']" position="attributes">
+                	   <attribute name="invisible">True</attribute>
+                </xpath> -->
+                <xpath expr="/form/sheet/notebook/page[@string='Order Lines']/field[@name='order_line']/tree[@string='Sales Order Lines']/field[@name='product_uom_qty']" position="before">
+<!--                	   <field name="isbn_number"></field> -->
+                	   <field name="voorraadcode"></field>
+                	   <field name="author_id"></field>
+                	   <field name="qoh"></field>
+                </xpath>
+		<page string="Other Information" position="after">
+                    <page string="Zonder ISBN">
+                        <field name="order_line_product" domain="[('product_id','=',False)]">
+			    <tree string="Orderlijnen" readonly="True">
+			        <field name="product_id" invisible="True"/>
+			        <field name="state" invisible="True"/>
+			        <field name="name"/>
+	                        <field name="product_uom_qty"/>
+	                        <field name="price_excel"/> 
+			    </tree>
+		        </field>
+		    </page>
+                    <page string="Verschillende Titel">
+                        <field name="order_line_titel" domain="[('boolean_name_excel','=',False)]">
+			    <tree string="Orderlijnen" readonly="True">
+			        <field name="product_id" invisible="True"/>
+			        <field name="state" invisible="True"/>
+			        <field name="name"/>
+	                        <field name="name_excel"/> 
+			    </tree>
+		        </field>
+		    </page>
+                    <page string="Boeken in voorraad">
+                        <field name="order_line_qoh" domain="[('qoh_boolean','!=',False)]">
+			    <tree string="Orderlijnen" readonly="True">
+			        <field name="product_id" invisible="True"/>
+			        <field name="state" invisible="True"/>
+			        <field name="name"/>
+			        <field name="qoh"/>
+	                <field name="product_uom_qty"/> 
+			    </tree>
+		        </field>
+		    </page>
+                    <page string="Boeken zonder leverancier">
+                        <field name="order_line_nosupp" domain="[('product_supplierinfo_id','==',False)]">
+			    <tree string="Orderlijnen" readonly="True">
+			        <field name="product_id" invisible="True"/>
+			        <field name="state" invisible="True"/>
+			        <field name="name"/>
+			        <field name="qoh"/>
+	                        <field name="product_uom_qty"/> 
+			    </tree>
+		        </field>
+		    </page>
+                    <page string="Niet leverbaar">
+                        <field name="order_line_qoh_code">
+			    <tree string="Orderlijnen" readonly="True">
+			        <field name="product_id" invisible="True"/>
+			        <field name="state" invisible="True"/>
+			        <field name="name"/>
+			        <field name="qoh"/>
+	                        <field name="product_uom_qty"/> 
+	                        <field name="voorraadcode"/> 
+			    </tree>
+		        </field>
+		    </page>
+		</page> 
+            </data>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_sale_order_tree">
+        <field name="name">christiana.sale.order.tree</field>
+        <field name="model">sale.order</field>
+	<field name="inherit_id" ref="sale.view_order_tree"/> 
+        <field name="arch" type="xml">
+            <data>
+                <field name="date_order" position="before">
+                    <field name="zichtzending"/>
+                </field>
+            </data>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_sale_quotation_tree">
+        <field name="name">christiana.sale.quotation.tree</field>
+        <field name="model">sale.order</field>
+	<field name="inherit_id" ref="sale.view_quotation_tree"/> 
+        <field name="arch" type="xml">
+            <data>
+                <field name="date_order" position="before">
+                    <field name="zichtzending"/>
+                </field>
+            </data>
+        </field>
+    </record>
+     
+    <record model="ir.ui.view" id="christiana_partner_form">
+        <field name="name">christiana.partner.form</field>
+        <field name="model">res.partner</field>
+	<field name="inherit_id" ref="base.view_partner_form"/> 
+        <field name="arch" type="xml">
+        <data>
+            <page string="Internal Notes" position="before"> 
+                <page string="Spec. Informatie">
+                    <group>
+                        <field name="min_order_amount"/>
+                        <field name="max_qty_per_book"/>
+                        <field name="zichtzending"/>
+                        <field name="total_invoice"/>
+                        <field name="invoice_text"/>
+                    </group>
+                    <group colspan="4">
+                 	<separator string="Budgets" colspan="4" />
+                        <field name="partner_budget_ids" nolabel="1" context="{'default_partner_id':active_id}">
+            		    <form string="Budget">
+                		<field name="year"/>
+                		<field name="budget"/>
+            		    </form>
+            		    <tree string="Budget">
+                		<field name="year"/>
+                		<field name="budget"/>
+            		    </tree>
+			</field>
+		    </group>
+                </page>
+            </page>
+<!--	    <field name="property_invoice_type" position="replace"/>
+	    <separator string="Invoicing" position="replace"/>
+	    <field name="date" position="after">
+		<field name="property_invoice_type"/>
+	    </field> -->
+        </data>
+        </field>
+    </record>
+    <record model="ir.ui.view" id="christiana_partner_pricelist_form">
+        <field name="name">christiana.partner.pricelist.form</field>
+        <field name="model">res.partner</field>
+	<field name="inherit_id" ref="sale_journal.view_partner_property_form"/> 
+        <field name="arch" type="xml">
+        <data>
+	    <separator string="Invoicing" position="attributes">
+		<attribute name="invisible">True</attribute>
+	    </separator>
+	    <field name="property_invoice_type" position="attributes">
+		<attribute name="invisible">True</attribute>
+	    </field>
+	    <page string="Sales &amp; Purchases" position="inside">
+	      <group colspan="2" col="2">
+		<separator string="Invoicing" colspan="2"/>
+		<field name="property_invoice_type"/>
+	      </group>
+	    </page>
+        </data>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_partner_warning_form">
+        <field name="name">christiana.partner.warning.form</field>
+        <field name="model">res.partner</field>
+	<field name="inherit_id" ref="warning.view_partner_warning_form"/> 
+        <field name="arch" type="xml">
+        <data>
+            <xpath expr="/form/sheet/notebook/page[@string='Warnings']"> 
+                <group colspan="2" col="2">
+                    <separator string="Warning on the Max Book Qty" colspan="4"/>
+                    <field name="sale_qty_warn" nolabel="1" />
+                    <field name="sale_qty_warn_msg" colspan="3" nolabel="1" attrs="{'required':[('sale_qty_warn','!=','no-message')],'readonly':[('sale_qty_warn','=','no-message')]}"/>
+                </group>
+            </xpath>
+        </data>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="purchase_order_supplier_tree">
+        <field name="name">purchase.order.supplier.tree</field>
+        <field name="model">purchase.order</field>
+        <field name="priority" eval="20"/>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="Purchase Orders by Supplier">
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="date_approve"/>
+                <field name="amount_untaxed"/>
+
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_purchase_order_supplier">
+        <field name="name">Purchase Orders by Supplier</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_type">tree</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('state','=','approved'),('shipped','=',False)]</field>
+        <field name="view_id" ref="purchase_order_supplier_tree"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_purchase_order_supplier_view">
+        <field name="sequence" eval="20"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="purchase_order_supplier_tree"/>
+        <field name="act_window_id" ref="action_purchase_order_supplier"/>
+    </record>
+
+    <menuitem name="Orders by Supplier" id="menu_purchase_order_supplier_tree" action="action_purchase_order_supplier" parent = "purchase.menu_procurement_management" sequence="100"/>
+
+    <record model="ir.ui.view" id="christiana_invoice_tree_view">
+        <field name="name">christiana.invoice.tree.view</field>
+        <field name="model">account.invoice</field>
+	<field name="inherit_id" ref="account.invoice_tree"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+             <field name="partner_id" position="after">
+                <field name="del_addr_id"/>
+            </field>       	
+            <field name="state" position="after">
+                <field name="combined_vat_flag" widget="boolean"/>
+            </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_view_account_invoice_filter">
+        <field name="name">christiana.view.account.invoice.filter</field>
+        <field name="model">account.invoice</field>
+		<field name="inherit_id" ref="account.view_account_invoice_filter"/> 
+        <field name="arch" type="xml">
+            <filter string="Partner" position="after">
+                <filter string="Leveringsadres" icon="terp-partner" domain="[]" context="{'group_by':'del_addr_id'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_invoice_form_view">
+        <field name="name">christiana.invoice.form.view</field>
+        <field name="model">account.invoice</field>
+	<field name="inherit_id" ref="account.invoice_form"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="del_addr_id" readonly="True"/>
+            </field>       	
+            <field name="payment_term" position="after">
+                <field name="combined_vat" readonly="True"/>
+            </field>
+            <xpath expr="/form/sheet/notebook/page[@string='Invoice Lines']/field[@name='invoice_line']/tree[@string='Invoice Lines']/field[@name='price_subtotal']" position="before">
+                <field name="combined_vat" readonly="True"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_invoice_line_tree_view">
+        <field name="name">christiana.invoice.line.tree.view</field>
+        <field name="model">account.invoice.line</field>
+	<field name="inherit_id" ref="account.view_invoice_line_tree"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="price_subtotal" position="before">
+                <field name="combined_vat" readonly="True"/>
+            </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_purchase_order_form_view">
+        <field name="name">christiana.purchase.order.form.view</field>
+        <field name="model">purchase.order</field>
+	<field name="inherit_id" ref="purchase.purchase_order_form"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="date_order" position="after">
+                <field name="zichtzending"/>
+            </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_purchase_order_tree_view">
+        <field name="name">christiana.purchase.order.tree.view</field>
+        <field name="model">purchase.order</field>
+	<field name="inherit_id" ref="purchase.purchase_order_tree"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="distributeur"/>
+                <field name="titel"/>
+                <field name="zichtzending"/>
+            </field>
+	    <field name="origin" position="attributes">
+		<attribute name="invisible">True</attribute>
+	    </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_purchase_order_search_view">
+        <field name="name">christiana.purchase.order.search.view</field>
+        <field name="model">purchase.order</field>
+	<field name="inherit_id" ref="purchase.view_purchase_order_filter"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <filter string="Supplier" position="before">
+                <filter string="Distributeur" icon="terp-partner" domain="[]" context="{'group_by':'distributeur'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_stock_picking_tree_view">
+        <field name="name">christiana.stock.picking.tree.view</field>
+        <field name="model">stock.picking.out</field>
+	<field name="inherit_id" ref="stock.view_picking_out_tree"/> 
+<!--        <field name="model">stock.picking</field>
+	<field name="inherit_id" ref="stock.vpicktree"/> -->
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="reservation_id"/>
+            </field> 
+            <field name="stock_journal_id" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </field>
+            <field name="state" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </field>
+            <field name="date" position="replace">
+                <field name="date" widget="date"/>
+            </field>
+            <field name="min_date" position="replace">
+                <field name="min_date" widget="date"/>
+            </field>
+            <field name="state" position="after">
+                <field name="zichtzending"/>
+                <field name="zichtz_inv_allowed"/>
+                <field name="invoice_amount"/>
+            </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_stock_picking_form_view">
+        <field name="name">christiana.stock.picking.form.view</field>
+        <field name="model">stock.picking.out</field>
+	<field name="inherit_id" ref="stock.view_picking_out_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="zichtzending" readonly="True"/>
+                <field name="zichtz_inv_allowed"/>
+                <field name="invoice_amount" readonly="True"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_stock_move_reception_tree_view">
+        <field name="name">christiana.stock.move.reception.tree.view</field>
+        <field name="model">stock.move</field>
+	<field name="inherit_id" ref="stock.view_move_tree_reception_picking"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="distributeur_search"/>
+            </field>
+            <field name="origin" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </field>
+            <field name="product_id" position="after">
+                <field name="zichtzending"/>
+                <field name="qty_on_reservation"/>
+            </field>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_stock_move_search_view">
+        <field name="name">christiana.stock.move.search.view</field>
+        <field name="model">stock.move</field>
+	<field name="inherit_id" ref="stock.view_move_search"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <filter string="Product" position="before">
+                <filter string="Partner" icon="terp-partner" domain="[]" context="{'group_by':'partner_id'}"/>
+                <filter string="Distributeur" icon="terp-partner" domain="[]" context="{'group_by':'distributeur_search'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_sale_order_line_tree_view">
+        <field name="name">christiana.sale.order.line.tree.view</field>
+        <field name="model">sale.order.line</field>
+	<field name="inherit_id" ref="sale.view_order_line_tree"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="order_partner_id" position="after">
+                <field name="date_order" widget="date"/>
+            </field>
+        </field>
+    </record>
+
+	<record id="view_so_line_search" model="ir.ui.view">
+	    <field name="name">view.so.line.search</field>
+	    <field name="model">sale.order.line</field>
+	    <field name="arch" type="xml">
+                <search string="Search Detail">
+                    <group string="Search..." expand="0">
+		    	<field name="product_id"/>
+		    	<field name="order_partner_id"/>
+		    	<field name="order_id"/>
+		    	<field name="author_id"/>
+                    </group>
+                    <newline />
+                    <group expand="0" string="Group By...">
+                        <filter string="ISBN" name="grouptype" context="{'group_by':'product_id'}" />
+                        <filter string="Partner" name="grouptype" context="{'group_by':'order_partner_id'}" />
+                        <filter string="Order" name="grouptype" context="{'group_by':'order_id'}" />
+                        <filter string="Auteur" name="grouptype" context="{'group_by':'author_id'}" />
+                    </group>
+                </search>
+	    </field>
+	</record>
+
+        <record id="view_so_line_tree" model="ir.ui.view">
+            <field name='name'>view.so.line.tree</field>
+            <field name='model'>sale.order.line</field>
+            <field name='arch' type='xml'>
+				<tree string="Verkooporderlijnen">
+					<field name="product_id" invisible="True"/>
+					<field name="isbn_number" readonly="True"/>
+					<field name="name" readonly="True"/>
+					<field name="author_id" readonly="True"/>
+					<field name="distributeur" readonly="True"/>
+					<field name="order_partner_id" readonly="True"/>
+					<field name="order_id" readonly="True"/>
+					<field name="date_order" readonly="True"/>
+					<field name="qoh" readonly="True"/>
+					<field name="product_uom_qty" readonly="False"/>
+					<field name="price_unit" readonly="True"/>
+					<field name="discount" readonly="True"/>
+					<field name="price_subtotal" readonly="True"/>
+					<field name="zichtzending" readonly="True"/>
+					<field name="state" readonly="True"/>
+					<field name="invoiced" readonly="True"/>
+				</tree>
+		    </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_so_line_form">
+            <field name="name">Verkooporderlijnen</field>
+            <field name='res_model'>sale.order.line</field>
+            <field name="view_mode">tree</field>
+            <field name="view_type">form</field>
+	    <field name="view_id" ref="view_so_line_tree"/>
+	    <field name="search_view_id" ref="view_so_line_search"/>
+        </record>
+
+        <menuitem name="Verkooporderlijnen" parent="base.menu_sales" id="menu_so_line" sequence="100" action="action_so_line_form"/>
+
+    <record model="ir.ui.view" id="christiana_sale_order_discount_form">
+        <field name="name">christiana.sale.order.form</field>
+        <field name="model">sale.order</field>
+	    <field name="inherit_id" ref="sale.view_order_form"/> 
+        <field name="arch" type="xml">
+            <data>
+                <xpath expr="/form/sheet/notebook/page[@string='Order Lines']/field[@name='order_line']/tree[@string='Sales Order Lines']/field[@name='product_id']" position="attributes">
+              	    <attribute name="on_change">product_id_change(parent.pricelist_id, product_id, product_uom_qty, product_uom, product_uos_qty, product_uos, name, parent.partner_id, False, True, parent.date_order, False, parent.fiscal_position, False, parent.zichtzending, context)</attribute>
+                </xpath>
+                <xpath expr="/form/sheet/notebook/page[@string='Order Lines']/field[@name='order_line']/tree[@string='Sales Order Lines']/field[@name='product_uom_qty']" position="attributes">
+              	    <attribute name="on_change">product_id_change(parent.pricelist_id, product_id, product_uom_qty, product_uom, product_uos_qty, product_uos, name, parent.partner_id, False, True, parent.date_order, False, parent.fiscal_position, False, parent.zichtzending, context)</attribute>
+                </xpath>
+            </data>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_incoming_shipment_search_view">
+        <field name="name">christiana.incoming.shipment.search.view</field>
+        <field name="model">stock.picking.in</field>
+	<field name="inherit_id" ref="stock.view_picking_in_search"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <filter string="Journal" position="after">
+                <filter string="Partner" icon="terp-folder-orange" domain="[]" context="{'group_by':'partner_id'}"/>
+            </filter>
+        </field>
+    </record>
+    <record model="ir.ui.view" id="christiana_outgoing_shipment_search_view">
+        <field name="name">christiana.outgoing.shipment.search.view</field>
+        <field name="model">stock.picking.out</field>
+	<field name="inherit_id" ref="stock.view_picking_out_search"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <filter string="Journal" position="after">
+                <filter string="Partner" icon="terp-folder-orange" domain="[]" context="{'group_by':'partner_id'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_purchase_order_line_tree">
+	<field name="name">christiana.purchase.order.line.tree</field>
+	<field name="model">purchase.order.line</field>
+        <field name="inherit_id" ref="purchase.purchase_order_line_tree"/>
+        <field name="arch" type="xml">
+            <data>
+      	        <field name="product_id" position="before">
+		    <field name="isbn_number"/>
+	        </field>
+            </data>
+	</field>
+    </record> 
+
+    <record model="ir.ui.view" id="christiana_purchase_order_line_form">
+        <field name="name">christiana.purchase.order.line.form</field>
+        <field name="model">purchase.order.line</field>
+	<field name="inherit_id" ref="purchase.purchase_order_line_form"/> 
+        <field name="arch" type="xml">
+            <data>
+	        <field name="product_id" position="before">
+                    <field name="isbn_number"/>
+                </field>
+            </data>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_purchase_order_form">
+        <field name="name">christiana.purchase.order.form</field>
+        <field name="model">purchase.order</field>
+	<field name="inherit_id" ref="purchase.purchase_order_form"/> 
+        <field name="arch" type="xml">
+            <data>
+                <xpath expr="/form/sheet/notebook/page[@string='Purchase Order']/field[@name='order_line']/tree[@string='Purchase Order Lines']/field[@name='product_id']" position="before">
+                    <field name="isbn_number" on_change="isbn_change(isbn_number, context)"/>
+                </xpath>
+            </data>
+        </field>
+    </record>
+
+	<record id="view_po_line_search" model="ir.ui.view">
+	    <field name="name">view.po.line.search</field>
+	    <field name="model">purchase.order.line</field>
+	    <field name="arch" type="xml">
+                <search string="Search Detail">
+                    <filter icon="terp-document-new" name="draft" string="Offerte" domain="[('order_state','=','draft')]" help="Purchase orders which are in draft state"/>
+                    <filter icon="terp-check" name="approved" string="Aankooporder" domain="[('order_state','not in',('draft','cancel','done'))]" help="Approved purchase orders"/>
+                    <filter icon="terp-check" name="done" string="Afgewerkt Aankooporder" domain="[('order_state','=','done')]" help="Approved purchase orders"/>
+                    <filter icon="terp-emblem-important" name="exception" string="Uitzondering" domain="[('order_state','in',('except_invoice','except_picking'))]" help="Purchase orders which are in exception state"/>
+                    <group string="Search..." expand="0">
+		    	<field name="product_id"/>
+		    	<field name="partner_id"/>
+		    	<field name="order_id"/>
+		    	<field name="distributeur"/>
+                    </group>
+                    <newline />
+                    <group expand="0" string="Group By...">
+                        <filter string="ISBN" name="grouptype" context="{'group_by':'product_id'}" />
+                        <filter string="Partner" name="grouptype" context="{'group_by':'partner_id'}" />
+                        <filter string="Order" name="grouptype" context="{'group_by':'order_id'}" />
+                        <filter string="Distributeur" name="grouptype" context="{'group_by':'distributeur'}" />
+                    </group>
+                </search>
+	    </field>
+	</record>
+
+        <record id="view_po_line_tree" model="ir.ui.view">
+            <field name='name'>view.po.line.tree</field>
+            <field name='model'>purchase.order.line</field>
+            <field name='arch' type='xml'>
+		<tree string="Aankooporderlijnen">
+		    <field name="product_id" invisible="True"/>
+		    <field name="name"/>
+		    <field name="distributeur"/>
+		    <field name="partner_id"/>
+		    <field name="order_id"/>
+		    <field name="date_order"/>
+		    <field name="product_qty"/>
+		    <field name="price_unit"/>
+		    <field name="price_subtotal"/>
+		    <field name="state"/>
+		    <field name="invoiced"/>
+		</tree>
+	    </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_po_line_form">
+            <field name="name">Aankooporderlijnen</field>
+            <field name='res_model'>purchase.order.line</field>
+            <field name="view_mode">tree</field>
+            <field name="view_type">form</field>
+	    	<field name="view_id" ref="view_po_line_tree"/>
+	    	<field name="search_view_id" ref="view_po_line_search"/>
+	    	<field name="domain">[('order_state','!=','cancel')]</field>
+        </record>
+
+        <menuitem name="Aankooporderlijnen" parent="purchase.menu_procurement_management" id="menu_po_line" sequence="110" action="action_po_line_form"/>
+
+    </data>
+</openerp>

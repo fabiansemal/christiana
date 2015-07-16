@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+
+    <record model="ir.ui.view" id="christiana_sales_view_partner_form2">
+        <field name="name">christiana.sales.view.partner.form2</field>
+        <field name="model">res.partner</field>
+	<field name="inherit_id" ref="product.view_partner_property_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <group name="pricelists" position="before">
+                <separator string="Prijslijsten" colspan="4" col="2"/>
+		<field name="discount_ids" nolabel="1" context="{'default_partner_id':active_id}">
+		    <tree string="Discounts" editable="bottom">
+			<field name="awso_code"/>
+			<field name="discount_pct"/>
+		    </tree>
+		</field>
+            </group>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="christiana_sale_order_discount_form">
+        <field name="name">christiana.sale.order.form</field>
+        <field name="model">sale.order</field>
+	    <field name="inherit_id" ref="sale.view_order_form"/> 
+        <field name="arch" type="xml">
+            <data>
+                <xpath expr="/form/sheet/notebook/page[@string='Order Lines']/field[@name='order_line']/tree[@string='Sales Order Lines']/field[@name='product_id']" position="attributes">
+              	    <attribute name="on_change">product_id_change(parent.pricelist_id, product_id, product_uom_qty, product_uom, product_uos_qty, product_uos, name, parent.partner_id, False, True, parent.date_order, False, parent.fiscal_position, False, parent.zichtzending, context)</attribute>
+                </xpath>
+            </data>
+        </field>
+    </record>
+
+    </data>
+</openerp>
+

@@ -1,0 +1,17 @@
+# -*- encoding: utf-8 -*-
+
+from mx import DateTime
+import time
+
+from osv import fields, osv
+
+class res_partner(osv.osv):
+	_name = "res.partner.project"
+	_inherit = "res.partner"		
+	_columns = {'issue_ids' : fields.one2many('project.issue', 'partner_id', 'Issues'),
+	            'project_ids' : fields.one2many('account.analytic.account', 'partner_id', 'Projects'),
+	}
+
+res_partner()
+
+

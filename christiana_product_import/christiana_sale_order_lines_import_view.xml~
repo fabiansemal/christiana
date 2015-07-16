@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+<!--
+   <menuitem
+       icon="terp-project" id="account_entry_invoice_lines_main_menu"
+       name="account_entry_invoice_lines" sequence="0"
+       web_icon="images/account_entry_invoice_lines.png"
+       web_icon_hover="images/account_entry_invoice_lines-hover.png"/>
+
+    <menuitem name="Configuration" id="account_entry_invoice_lines_configuration_menu" parent="module_main_menu"/>
+    <menuitem name="account_entry_invoice_lines" id="module_menu" parent="module_main_menu"  sequence="5"/>
+
+-->
+   <!--
+       account_entry_invoice_lines Views 
+   -->
+
+        <record id="view_sale_order_lines_import_wizard" model="ir.ui.view">
+            <field name="name">Import Sale Order Lines</field>
+            <field name="model">sale.order.lines.import.wizard</field>
+            <field name="arch" type="xml">
+            <form string="Import Sale Order Lines" version="7.0">
+                <group colspan="4">
+                    <!--    <label for="lines_file" string="Entry Lines File"/>-->
+                    <field name="lines_file"/>
+                </group>
+                <footer>
+                 <div name="so_lines_import">
+                        <button name="sale_order_lines_import" type="object" string="Import File" class="oe_highlight"/>
+                        <button string="Cancel" class="oe_link" special="cancel" />
+                 </div>
+                 </footer>
+            </form>
+            </field>
+        </record>
+
+        <record id="act_so_lines_import_wizard" model="ir.actions.act_window">
+            <field name="name">Import Sale Order Lines</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">sale.order.lines.import.wizard</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_sale_order_lines_import_wizard"/>
+            <field name="target">new</field>
+        </record>
+        
+        <record id="view_sale_order_tree_lines_import_inherit" model="ir.ui.view">
+            <field name="name">view.account.tree.move.lines_import.inherit</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <button name="action_button_confirm" position="after">
+                    <button name="%(sale_order_lines_import.act_so_lines_import_wizard)d" string="Import Sale Order Lines"
+                            type="action" class="oe_highlight" states="draft"/>
+                </button>
+            </field>
+        </record>
+
+
+
+
+
+<!--
+    <record model="ir.ui.view" id="view_account_entry_invoice_lines_tree">
+        <field name="name">view.account_entry_invoice_lines.tree</field>
+        <field name="model">account_entry_invoice_lines</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="account_entry_invoice_lines">
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="view_account_entry_invoice_lines_form">
+        <field name="name">view.account_entry_invoice_lines.form</field>
+        <field name="model">account_entry_invoice_lines</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="account_entry_invoice_lines">
+		<field name="name"/>
+		<field name="code"/>
+            </form>
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_account_entry_invoice_lines">
+        <field name="name">All account_entry_invoice_lines</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">account_entry_invoice_lines</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_account_entry_invoice_lines_tree"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_account_entry_invoice_lines_tree_view">
+        <field name="sequence">10</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_account_entry_invoice_lines_tree"/>
+        <field name="act_window_id" ref="action_account_entry_invoice_lines"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_account_entry_invoice_lines_form_view">
+        <field name="sequence">20</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_account_entry_invoice_lines_form"/>
+        <field name="act_window_id" ref="action_account_entry_invoice_lines"/>
+    </record>
+
+    <menuitem name="All account_entry_invoice_lines" id="menu_module" parent="module_menu" action="action_module" sequence="5"/>
+
+    <record model="ir.ui.view" id="view_campaign_proposition_segment_segmentation_form_inherit">
+        <field name="name">view.campaign.proposition.segment.segmentation.form</field>
+        <field name="model">dm.campaign.proposition</field>
+        <field name="type">form</field>
+        <field name="inherit_id" ref="dm.view_campaign_proposition_form"/>        
+        <field name="arch" type="xml">
+            <xpath expr="/form/notebook/page/field[@name='segment_ids']/form/notebook" position="inside">
+                <page string="Extraction">
+                    <field name="segmentation_id" string="Segmentation"/>
+                    <field name="use_census"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+        <record id="view_product_search_nineit" model="ir.ui.view">
+            <field name="name">product.product.search.nineit</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_search_form_view" />
+            <field name="type">search</field>
+            <field name="arch" type="xml">
+                <xpath expr="/search/field[@name='categ_id']" position='after'>
+                        <field name="nineit_sku"/>
+                        <field name="nineit_barcode"/>
+                        <field name="nineit_import_file_id" string="Supplier"/>
+                </xpath>
+            </field>
+        </record>
+
+    <act_window name="Ship Sale Orders"
+    res_model="sale.order"
+    src_model="res.partner"
+    view_type="form"
+    view_mode="tree,form"
+    id="act_tresco_ship_sale_orders"
+    context="{'ship_id':active_id}"
+    domain="[('ship_id','=',active_id)]"
+    />
+
+
+-->
+
+    </data>
+</openerp>

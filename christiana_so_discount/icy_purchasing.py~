@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+##############################################################################
+#
+##############################################################################
+
+from openerp.osv import osv, fields
+
+class res_partner(osv.osv):
+    _name = 'res.partner'
+    _inherit = 'res.partner'
+
+    _columns = {
+        'pct_underdelivery': fields.integer('% Underdelivery'),
+        'pct_overdelivery': fields.integer('% Overdelivery'),
+        'subcontractor': fields.boolean('Subcontractor'),
+    }
+
+res_partner()
+
+class survey(osv.osv):
+    _name = 'survey'
+    _inherit = 'survey'
+
+    def create(self, cr, uid, vals, context=None):
+        vals['max_response_limit'] = 999999
+        vals['response_user'] = 999999
+        return super(survey, self).create(cr, uid, vals, context=context)
+
+    _columns = {
+    }
+
+survey()
+
+class survey_response(osv.osv):
+    _name = 'survey.response'
+    _inherit = 'survey.response'
+
+    _defaults = {
+        'stock_move_id': lambda self,cr,uid,context:context.get('stock_move_id',False),
+        'product_id': lambda self,cr,uid,context:context.get('product_id',False),
+    }
+
+    _columns = {
+        'stock_move_id': fields.many2one('stock.move', 'Stock Move', select=True),
+        'product_id': fields.many2one('product.product', 'Product', select=True),
+    }
+
+survey_response()
+
+class survey_name_wiz(osv.osv):
+    _name = 'survey.name.wiz'
+    _inherit = 'survey.name.wiz'
+
+    _defaults = {
+        'stock_move_id': lambda self,cr,uid,context:context.get('stock_move_id',False),
+        'product_id': lambda self,cr,uid,context:context.get('product_id',False),
+    }
+
+    _columns = {
+        'stock_move_id': fields.many2one('stock.move', 'Stock Move', select=True),
+        'product_id': fields.many2one('product.product', 'Product', select=True),
+    }
+
+survey_name_wiz()
+
+class survey_question_wiz(osv.osv):
+    _name = 'survey.question.wiz'
+    _inherit = 'survey.question.wiz'
+
+    _defaults = {
+        'stock_move_id': lambda self,cr,uid,context:context.get('stock_move_id',False),
+        'product_id': lambda self,cr,uid,context:context.get('product_id',False),
+    }
+
+    def action_next(self, cr, uid, ids, context=None):
+        sql_stat = "select response from survey_name_wiz where id = %d" % context.get('sur_name_id',False)
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            resp_id = int(sql_res['response'])
+            if context.has_key('product_id'):
+                self.pool.get('survey.response').write(cr, uid, resp_id, {'product_id':context.get('product_id',False)})
+            if context.has_key('active_model'):
+                if context.get('active_model') == 'stock.move':
+                    self.pool.get('survey.response').write(cr, uid, resp_id, {'stock_move_id':context.get('active_id',False)})
+            if context.has_key('stock_move_id'):
+                self.pool.get('survey.response').write(cr, uid, resp_id, {'stock_move_id':context.get('stock_move_id',False)})
+
+        return super(survey_question_wiz, self).action_next(cr, uid, ids, context=context)
+
+    _columns = {
+        'stock_move_id': fields.many2one('stock.move', 'Stock Move', select=True),
+        'product_id': fields.many2one('product.product', 'Product', select=True),
+    }
+
+survey_question_wiz()
+
+class product_product(osv.osv):
+    _inherit = "product.product"
+
+    def answer_checklist(self, cr, uid, ids, context=None):
+            ir_model_data_obj = self.pool.get('ir.model.data')
+            ir_model_data_id = ir_model_data_obj.search(cr, uid,
+                [['model', '=', 'ir.ui.view'],
+                 ['name', '=', 'view_survey_name']],
+                context=context)
+            res_id = ir_model_data_obj.read(cr, uid, ir_model_data_id,
+                                            fields=['res_id'])[0]['res_id']
+
+            if isinstance(ids, list):
+                ids = ids[0]
+
+            product = self.browse(cr, uid, ids, context=context)
+            product_id = product.id
+
+            context.update({'product_id': product.id})
+
+            return {
+                'name': 'Answer Checklist',
+                'view_type': 'form',
+                'view_mode': 'form',
+                'view_id': [res_id],
+                'res_model': 'survey.name.wiz',
+                'context': context,
+                'type': 'ir.actions.act_window',
+                'nodestroy': True,
+                'target': 'new',
+            }
+
+    _columns = {'survey_ids' : fields.one2many('survey.response', 'product_id', 'Checklists'),
+	}
+
+product_product()
+
+class stock_move(osv.osv):
+    _inherit = "stock.move"
+
+    def answer_checklist(self, cr, uid, ids, context=None):
+            print'ACSM:',context
+            ir_model_data_obj = self.pool.get('ir.model.data')
+            ir_model_data_id = ir_model_data_obj.search(cr, uid,
+                [['model', '=', 'ir.ui.view'],
+                 ['name', '=', 'view_survey_name']],
+                context=context)
+            res_id = ir_model_data_obj.read(cr, uid, ir_model_data_id,
+                                            fields=['res_id'])[0]['res_id']
+
+            if isinstance(ids, list):
+                ids = ids[0]
+
+            move = self.browse(cr, uid, ids, context=context)
+            print 'MOVE:',move
+            product_id = move.product_id.id
+            move_id = move.id
+
+            context.update({'product_id': product_id})
+            context.update({'stock_move_id': move_id})
+            print 'CONTEXT:',context
+
+            return {
+                'name': 'Answer Checklist',
+                'view_type': 'form',
+                'view_mode': 'form',
+                'view_id': [res_id],
+                'res_model': 'survey.name.wiz',
+                'context': context,
+                'type': 'ir.actions.act_window',
+                'nodestroy': True,
+                'target': 'new',
+            }
+
+    _columns = {'survey_ids' : fields.one2many('survey.response', 'stock_move_id', 'Checklists'),
+	}
+
+stock_move()
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+

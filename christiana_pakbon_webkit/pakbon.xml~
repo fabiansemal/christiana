@@ -1,0 +1,213 @@
+<?xml version="1.0"?>
+<openerp>
+    <data>
+    <record id="pakbon_header" model="ir.header_webkit">
+            <field name="footer_html"><![CDATA[
+			<html>
+			   <head>
+			       <meta content="text/html; charset=UTF-8" http-equiv="content-type"/>
+			       <script>
+			           function subst() {
+			           var vars={};
+			           var x=document.location.search.substring(1).split('&');
+			           for(var i in x) {var z=x[i].split('=',2);vars[z[0]] = unescape(z[1]);}
+			           var x=['frompage','topage','page','webpage','section','subsection','subsubsection'];
+			           for(var i in x) {
+			           var y = document.getElementsByClassName(x[i]);
+			           for(var j=0; j<y.length; ++j) y[j].textContent = vars[x[i]];
+			               }
+			           }
+			       </script>
+			       <style type="text/css">
+			       
+			           ${css}
+			       </style>
+			   </head>
+			   <body style="border:0; margin: 0;" onload="subst()">
+			       <table class="header" style="border-top: 1px solid black; width: 100%">
+			           <tr >
+			               <td style="text-align:center;font-size:12;" >${ company.rml_footer or '' }</td>
+			           </tr>
+			       </table> ${_debug or ''|n} </body>
+			</html>
+			            ]]></field>
+			            <field name="orientation">Portrait</field>
+			            <field name="format">A4</field>
+			            <field name="html"><![CDATA[
+			<html>
+    <head>
+        <meta content="text/html; charset=UTF-8" http-equiv="content-type"/>
+        <script>
+            function subst() {
+            var vars={};
+            var x=document.location.search.substring(1).split('&');
+            for(var i in x) {var z=x[i].split('=',2);vars[z[0]] = unescape(z[1]);}
+            var x=['frompage','topage','page','webpage','section','subsection','subsubsection'];
+            for(var i in x) {
+            var y = document.getElementsByClassName(x[i]);
+            for(var j=0; j<y.length; ++j) y[j].textContent = vars[x[i]];
+                }
+            }
+        </script>
+        <style type="text/css">
+            ${css}
+        </style>
+    </head>
+    <body style="border:0; margin: 0;" onload="subst()">
+        <table class="header" style="border-bottom: 0px solid black; width: 100%">
+            <tr>
+                <td>${helper.embed_image('png',company.logo,97,132)|n}</td>
+                <td style="text-align:right"> </td>
+            </tr>
+            <tr>
+                <td><br/></td>
+                <td style="text-align:right"> </td>
+            </tr>
+            <tr>
+                <td>${company.partner_id.name |entity}</td>
+                <td/>
+            </tr>
+            <tr>
+                <td >${company.partner_id.street or ''|entity}</td>
+                <td/>
+            </tr>
+            <tr>
+                <td>${company.partner_id.zip or ''|entity} ${company.partner_id.city or ''|entity} </td>
+                <td/>
+            </tr>
+        </table> 
+        <br/>
+	    <br/>
+        ${_debug or ''|n} 
+	</body>
+			</html>]]>
+			            </field>
+			            <field eval="60.0" name="margin_top"/>
+			            <field eval="25.0" name="margin_bottom"/>
+			            <field name="css"><![CDATA[
+			
+			body, table, td, span, div {
+			    font-family: Helvetica, Arial;
+			}
+			 
+			body {
+			font-family:Arial;
+			font-size:9px; 
+			
+			}
+			
+			
+			.header {
+			    margin-left:0;
+			    text-align:left;
+			    width:300px;
+			    font-size:12;
+			}
+			.title {
+			font-size:16;
+			font-weight: bold;
+			font-family: Helvetica, Arial;
+			}
+			
+			
+			.basic_table{
+			width:100%;
+			text-align:center;
+			border:1px solid lightGrey;
+			border-collapse: collapse;
+			font-family: Helvetica;
+			padding-bottom:20px;
+			}
+			            
+			.basic_table td {
+			border:1px solid lightGrey;
+			font-size:11px;
+			font-family: Helvetica;
+			}
+			
+			.list_table {
+			border-bottom:1px solid black;
+			font-size:11px;
+			padding-top:20px;
+			border-collapse: collapse;
+			font-family: Helvetica;
+			font-weight: bold;
+			width:100%;
+			
+			}
+			.tbl_header{
+			    width:100%;
+			    font-size:10px;
+			   
+			   	font-family: Helvetica;
+			    border:1px solid lightGrey;
+			    border-collapse: collapse;
+			}
+			.tr_bottom_line{
+			    border-bottom: thin solid black;
+			    width:100%;
+			    font-size:12px;
+			    
+			   	font-family: Helvetica;
+			}
+			.tr_bottom_line_dark_grey{
+			    border-top: thin solid #ccc;
+			    width:100%;
+			    font-size:12px;
+			    font-family: Helvetica;
+			}
+			.tr_top{
+			            border-top: 1px solid black;
+			    		width:100%;
+			    		font-size:12px;
+			            font-family: Helvetica;
+			            text-align:left;
+			            }
+	
+			.td_f12{
+			    font-size:12px;
+			    font-family: Helvetica; 
+			    
+			}
+			.shipping_address{
+               margin-top: 10px;
+               margin-bottom: 10px;
+               font-size:11px;
+               text-align:left;
+             }
+		
+		
+			
+			]]>
+			            </field>
+			            <field name="name">Pakbon Header</field>
+		</record>
+		        
+		<report auto="False" 
+				id="pakbon_webkit"
+				model="stock.reservation" 
+				name="pakbon_webkit"
+                file="christiana_pakbon_webkit/report/pakbon.mako"
+                string="Pakbon"
+                usage="default"
+                multi="True"
+                attachment_use="False"
+                attachment="('PB'+(str(object.id) or '') + '.pdf')"
+                report_type="webkit"
+        		webkit_header="pakbon_header"/>
+        		
+		<record model="ir.ui.view" id="view_reservation_pakbon_form">
+           <field name="name">view.reservation.pakbon.form</field>
+           <field name="model">stock.reservation</field>
+		   <field name="inherit_id" ref="christiana_reservation.view_reservation_form"/>
+           <field name="type">form</field>
+           <field name="arch" type="xml">
+              <button name="action_confirm" position="after">
+                 <button name="pakbon_print" string="Print pakbon" type="object"/>           
+              </button>
+           </field>
+		</record>
+        
+
+	</data>
+</openerp>

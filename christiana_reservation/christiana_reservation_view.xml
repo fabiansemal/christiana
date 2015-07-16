@@ -1,0 +1,370 @@
+<?xml version="1.0" ?>
+
+<openerp>
+    <data>
+
+<!--    <record model="ir.ui.view" id="christiana_move_picking_tree">
+        <field name="name">christiana.move.picking.tree</field>
+        <field name="model">stock.move</field>
+	<field name="inherit_id" ref="stock.view_move_picking_tree"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="product_qty" position="after">
+                <field name="confirmed_qty" readonly="True"/>
+            </field>
+        </field>
+    </record> -->
+
+	<record id="view_scan_search" model="ir.ui.view">
+	    <field name="name">view.scan.search</field>
+	    <field name="model">stock.scan</field>
+	    <field name="arch" type="xml">
+		<search string="Ontvangstbonnen">
+		    <group expand="0" string="Selectie...">
+			<field name="name"/>
+			<field name="partner_id"/>
+			<field name="delnote_supplier"/>
+		    </group>
+		</search>
+	    </field>
+	</record>
+
+        <record id="view_scan_tree" model="ir.ui.view">
+            <field name='name'>view.scan.tree</field>
+            <field name='model'>stock.scan</field>
+            <field name='arch' type='xml'>
+		<tree string="Ontvangstbonnen">
+		    <field name="name"/>
+		    <field name="partner_id"/>
+		    <field name="delnote_supplier"/>
+		    <field name="date_created"/>
+		    <field name="zichtzending"/>
+		    <field name="state"/>
+		</tree>
+	    </field>
+        </record>
+
+        <record id="view_scan_form" model="ir.ui.view">
+            <field name='name'>view.scan.form</field>
+            <field name='model'>stock.scan</field>
+            <field name='arch' type='xml'>
+			<form string="Ontvangstbon" version="7.0">
+		    <header>
+                        <button name="action_load" string="ISBN's Laden" type="object"/>
+                        <button name="action_confirm" string="Verwerk Ontvangst" type="object" class="oe_highlight"/>
+		    </header>
+		    <sheet>
+			<group colspan="4" col="2">
+			    <group>
+ 		    	    <field name="name"/>
+			    	<field name="state" readonly="True"/>
+			    </group>
+			    <group>
+		     	    <field name="partner_id" required="True"/>
+			    	<field name="delnote_supplier" required="True"/>
+			    	<field name="zichtzending"/>
+			    </group>
+			</group>
+		    	<group colspan="4">
+			    <separator string="Ontvangsten" colspan="4"/>
+			    <field name="line_ids" nolabel="1" context="{'default_scan_id':active_id, 'default_zichtzending':zichtzending}">
+			    	<form string="Ontvangst">
+				    <group colspan="4" col="2">
+				        <group>
+ 				            <field name="name" on_change="onchange_barcode(name)"/>
+				        </group>
+				        <group>
+				            <field name="product_id" readonly="True"/>
+					    <field name="awso_code" on_change="onchange_awso_code(awso_code, so_line_ids)"/>
+				        </group>
+				        <group>
+				            <field name="qty_received" on_change="onchange_qty(product_id, qty_received, zichtzending)" widget="integer"/>
+					    <field name="zichtzending"/>
+				        </group>
+				        <group>
+					    <field name="vat" readonly="True"/>
+ 				            <field name="combined_vat"/>
+				            <field name="vat06" attrs="{'required':[('combined_vat','=',True)],'invisible':[('combined_vat','!=',True)]}"/>
+				            <field name="vat21" attrs="{'required':[('combined_vat','=',True)],'invisible':[('combined_vat','!=',True)]}"/>
+				        </group>
+				    </group>
+				    <separator string="Aankooporders"/>
+				    <field name="po_line_ids" colspan="4" nolabel="1">
+					<tree string="Aankooporders" editable="inside" create="false" delete="false">
+		 			    <field name="partner_id" readonly="True"/> 
+		 			    <field name="date_planned" readonly="True"/> 
+		 			    <field name="po_id" readonly="True"/> 
+					    <field name="qty_ordered" readonly="True" widget="integer"/> 
+					    <field name="qty_scanned" readonly="True" widget="integer"/> 
+					    <field name="qty_to_scan" readonly="True" widget="integer"/> 
+					    <field name="qty_scan" sum="Totaal" on_change="onchange_qty(qty_scan, qty_to_scan)" widget="integer"/> 
+					    <field name="zichtzending" readonly="True"/> 
+		 			</tree>
+				    </field>
+				    <separator string="Verkooporders"/>
+				    <field name="so_line_ids" colspan="4" nolabel="1">
+					<tree string="Verkooporders" editable="inside" create="false" delete="false">
+		 			    <field name="partner_id" readonly="True"/> 
+		 			    <field name="date_planned" readonly="True"/> 
+		 			    <field name="so_id" readonly="True"/> 
+					    <field name="qty_ordered" readonly="True" widget="integer"/> 
+					    <field name="qty_reserved" readonly="True" widget="integer"/> 
+					    <field name="qty_to_reserv" readonly="True" widget="integer"/> 
+					    <field name="qty_scan" sum="Totaal" on_change="onchange_qty(qty_scan, qty_to_reserv)" widget="integer"/> 
+					    <field name="so_price"/> 
+					    <field name="so_discount"/> 
+					    <field name="zichtzending" readonly="True"/> 
+		 			</tree>
+				    </field>
+			    	</form>
+			    </field>
+		    	</group>
+		    </sheet>
+		</form>
+	    </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_scan_form">
+            <field name="name">Scanning Ontvangsten</field>
+            <field name="res_model">stock.scan</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_type">form</field>
+	    <field name="search_view_id" ref="view_scan_search"/>
+        </record>
+
+	<record id="view_scan_line_search" model="ir.ui.view">
+	    <field name="name">view.scan.line.search</field>
+	    <field name="model">stock.scan.line</field>
+	    <field name="arch" type="xml">
+		<search string="Gescande Ontvangsten">
+		    <group expand="0" string="Selectie...">
+		    	<field name="scan_id"/>
+		    	<field name="product_id"/>
+		    	<field name="po_id"/>
+		    	<field name="so_id"/>
+		    	<field name="customer_id"/>
+		    </group>
+		</search>
+	    </field>
+	</record>
+
+        <record id="view_scan_line_tree" model="ir.ui.view">
+            <field name='name'>view.scan.line.tree</field>
+            <field name='model'>stock.scan.line</field>
+            <field name='arch' type='xml'>
+		<tree string="Gescande Ontvangsten">
+		    <field name="scan_id"/>
+		    <field name="product_id"/>
+		    <field name="name"/>
+		    <field name="qty_received" sum="Aantal"/>
+		</tree>
+	    </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_scan_line_form">
+            <field name="name">Gescande Ontvangsten</field>
+            <field name='res_model'>stock.scan.line</field>
+            <field name="view_mode">tree</field>
+            <field name="view_type">form</field>
+	    <field name="search_view_id" ref="view_scan_line_search"/>
+        </record>
+
+        <menuitem name="Christiana Scanprocedure" parent="base.menu_purchase_root" id="menu_christiana_scan" sequence="3" action="action_scan_form"/>
+        <menuitem name="Scanprocedure" parent="christiana_reservation.menu_christiana_scan" id="menu_stock_scan" sequence="10" action="action_scan_form"/>
+        <menuitem name="Gescande Ontvangsten" parent="christiana_reservation.menu_christiana_scan" id="menu_stock_scan_line" sequence="15" action="action_scan_line_form"/>
+
+	<record id="view_reservation_search" model="ir.ui.view">
+	    <field name="name">view.reservation.search</field>
+	    <field name="model">stock.reservation</field>
+	    <field name="arch" type="xml">
+		<search string="Reservaties">
+		    <group expand="0" string="Selectie...">
+			<field name="name"/>
+			<field name="partner_id"/>
+		    </group>
+            <newline />
+            <group expand="0" string="Group By...">
+                <filter string="Partner" name="grouptype" context="{'group_by':'partner_id'}" />
+                <filter string="Factuursoort" name="grouptype" context="{'group_by':'invoice_type_id'}" />
+                <filter string="Status" name="grouptype" context="{'group_by':'state'}" />
+            </group>
+		</search>
+	    </field>
+	</record>
+
+        <record id="view_reservation_tree" model="ir.ui.view">
+            <field name='name'>view.reservation.tree</field>
+            <field name='model'>stock.reservation</field>
+            <field name='arch' type='xml'>
+		<tree string="Reservaties">
+		    <field name="name"/>
+		    <field name="partner_id"/>
+		    <field name="partner_shipping_id"/>
+		    <field name="date_created"/>
+		    <field name="invoice_type_id"/>
+		    <field name="zichtzending"/>
+		    <field name="state"/>
+		</tree>
+	    </field>
+        </record>
+
+        <record id="view_reservation_form" model="ir.ui.view">
+            <field name='name'>view.reservation.form</field>
+            <field name='model'>stock.reservation</field>
+            <field name='arch' type='xml'>
+		<form string="Reservatie" version="7.0">
+		    <header>
+                        <button name="action_confirm" string="Verwerk Verzending" type="object" class="oe_highlight" attrs="{'invisible':[('state','!=','draft')]}"/>
+                        <button name="action_retour" string="Verwerk Retours" type="object" class="oe_highlight" attrs="{'invisible':[('state','!=','done')]}"/>
+                        <button name="action_invoice_create" string="Maak factuur" type="object" class="oe_highlight" attrs="{'invisible':[('state','!=','done'),('state','!=','returned')]}"/>
+		    </header>
+		    <sheet>
+			<group colspan="4" col="2">
+			    <group>
+ 		    	    <field name="name"/>
+			    	<field name="state" readonly="True"/>
+			    </group>
+			    <group>
+		     	    <field name="zichtzending" on_change="onchange_zichtzending(zichtzending, partner_id)"/>
+		     	    <field name="partner_id" on_change="onchange_partner(partner_id, zichtzending)"/>
+		     	    <field name="partner_shipping_id" required="True"/>
+			    </group>
+			</group>
+		    <group colspan="4">
+			    <separator string="Reserva)ties" colspan="4"/>
+			    <field name="line_ids" nolabel="1" context="{'default_reservation_id':active_id}">
+			    	<form string="Reservatie">
+					    <group colspan="4" col="2">
+						    <group>
+							    <field name="name" on_change="onchange_barcode(name)" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+							    <field name="product_id" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+							    <field name="awso_code" readonly="True"/>
+								<field name="state" invisible="True"/>
+						    </group>
+						    <group>
+<!-- 							    <field name="so_id" domain="[('state','=','progress'),('partner_id','=',customer_id)]" on_change="onchange_sale_order(so_id, product_id)" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/> -->
+							    <field name="so_id" domain="[('state','=','progress'),('partner_id','=',customer_id)]" on_change="onchange_sale_order(so_id, product_id)"  readonly="True"/>
+							    <field name="so_line_id" domain="[('product_id','=',product_id),('order_id','=',so_id),('state','=','confirmed')]" on_change="onchange_sale_order_line(so_line_id)" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+							    <field name="customer_id" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+							    <field name="qty_to_deliver" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+								<field name="qty_retour" attrs="{'readonly':[('state','!=','done')]}"/>
+						    </group>
+						    <group>
+							    <field name="zichtzending" readonly="True"/>
+							    <newline/>
+<!-- 							    <field name="so_price" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/> -->
+<!-- 							    <field name="so_discount" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/> -->
+							    <field name="so_price"/>
+							    <field name="so_discount"/>
+						    </group>
+						    <group>
+ 						        <field name="combined_vat" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+						        <field name="vat06" attrs="{'required':[('combined_vat','=',True)],'invisible':[('combined_vat','!=',True)],'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+  			    	            <field name="vat21" attrs="{'required':[('combined_vat','=',True)],'invisible':[('combined_vat','!=',True)],'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+				    		</group>
+				    	</group>
+			    	</form>
+			    </field>
+		    	</group>
+			<field name="comment"/>
+		    </sheet>
+		</form>
+	    </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_reservation_form">
+            <field name="name">Reservaties</field>
+            <field name="res_model">stock.reservation</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_type">form</field>
+	    <field name="search_view_id" ref="view_reservation_search"/>
+        </record>
+
+	<record id="view_reservation_line_search" model="ir.ui.view">
+	    <field name="name">view.reservation.line.search</field>
+	    <field name="model">stock.reservation.line</field>
+	    <field name="arch" type="xml">
+		<search string="Verwerkte Reservaties">
+		    <group expand="0" string="Selectie...">
+		    	<field name="reservation_id"/>
+		    	<field name="product_id"/>
+		    	<field name="so_id"/>
+		    	<field name="customer_id"/>
+		    </group>
+		</search>
+	    </field>
+	</record>
+
+        <record id="view_reservation_line_tree" model="ir.ui.view">
+            <field name='name'>view.reservation.line.tree</field>
+            <field name='model'>stock.reservation.line</field>
+            <field name='arch' type='xml'>
+		<tree string="Reservaties">
+		    <field name="reservation_id"/>
+			<field name="state" invisible="True"/>
+		    <field name="product_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="name" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="awso_code" readonly="True"/>
+		    <field name="so_line_id" invisible="True"/>
+		    <field name="so_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="customer_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="zichtzending" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="combined_vat" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="qty_to_deliver" sum="Aantal" attrs="{'readonly':[('state','!=','draft')]}"/>
+			<field name="qty_retour" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
+		    <field name="so_price" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="so_discount" attrs="{'readonly':[('state','!=','draft')]}"/>
+		</tree>
+	    </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_reservation_line_form">
+            <field name="name">Reservaties</field>
+            <field name='res_model'>stock.reservation.line</field>
+            <field name="view_mode">tree</field>
+            <field name="view_type">form</field>
+	    <field name="search_view_id" ref="view_reservation_line_search"/>
+        </record>
+
+        <menuitem name="Christiana Reservatieprocedure" parent="base.menu_base_partner" id="menu_christiana_reservation" sequence="2"/>
+        <menuitem name="Reservaties" parent="christiana_reservation.menu_christiana_reservation" id="menu_stock_reservation" sequence="10" action="action_reservation_form"/>
+        <menuitem name="Reservatielijnen" parent="christiana_reservation.menu_christiana_reservation" id="menu_stock_reservation_line" sequence="15" action="action_reservation_line_form"/>
+
+        <record id="view_stock_invoice_reservation" model="ir.ui.view">
+            <field name="name">Stock Invoice Reservation</field>
+            <field name="model">stock.invoice.reservation</field>
+            <field name="arch" type="xml">
+              <form string="Create invoice" version="7.0">
+                   <footer>
+                      <button name="open_invoice" string="Create" type="object" class="oe_highlight"/>
+                      or
+                      <button string="Cancel" class="oe_link" special="cancel"/>
+                  </footer>
+             </form>
+            </field>
+        </record>
+
+        <act_window name="Create Draft Invoices"
+            res_model="stock.invoice.reservation"
+            src_model="stock.reservation"
+            key2="client_action_multi"
+            multi="True"
+            view_mode="form"
+            view_type="form"
+            target="new"
+            id="action_stock_invoice_reservation"/>
+
+<!--    <record model="ir.ui.view" id="christiana_reservation_picking_tree_view">
+        <field name="name">christiana.reservation.picking.tree.view</field>
+        <field name="model">stock.picking.out</field>
+	<field name="inherit_id" ref="stock.view_picking_out_tree"/> 
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="reservation_id"/>
+            </field> 
+        </field>
+    </record>
+-->
+    </data>
+</openerp>
