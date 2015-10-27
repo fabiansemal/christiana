@@ -70,6 +70,19 @@
             </form>
             </field>
         </record>
+        <record id="view_import_job_review" model="ir.ui.view">
+            <field name="name">Nazicht Jobs</field>
+            <field name="model">import.job.log</field>
+	        <field name="type">tree</field>
+            <field name="arch" type="xml">
+	            <tree string="Jobs" create="0" edit="0" delete="0">
+	            	<field name="jobname"/>
+	            	<field name="jobtext"/>
+	            	<field name="jobrecs"/>
+	            	<field name="write_date"/>
+	            </tree>
+            </field>
+        </record>
 
         <record id="act_product_import_wizard" model="ir.actions.act_window">
             <field name="name">Import Bestand Boekenbank</field>
@@ -107,12 +120,22 @@
             <field name="view_id" ref="view_supplier_init_wizard"/>
             <field name="target">new</field>
         </record>
+        <record id="import_job_review" model="ir.actions.act_window">
+            <field name="name">Nazicht jobs</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">import.job.log</field>
+            <field name="view_type">tree</field>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_import_job_review"/>
+            <field name="target">new</field>
+        </record>
         
         <menuitem name="Import Boeken" parent="base.menu_base_partner" id="menu_import_boeken" sequence="3"/>
         <menuitem name="Import Bestand Leveranciers" parent="christiana_product_import.menu_import_boeken" id="menu_import_suppliers" sequence="5" action="act_supplier_import_wizard"/>
         <menuitem name="Import Bestand Auteurs" parent="christiana_product_import.menu_import_boeken" id="menu_import_authors" sequence="7" action="act_author_import_wizard"/>
         <menuitem name="Import Bestand Boekenbank" parent="christiana_product_import.menu_import_boeken" id="menu_import_boekenbank" sequence="10" action="act_product_import_wizard"/>
         <menuitem name="Leveranciers Bepalen" parent="christiana_product_import.menu_import_boeken" id="menu_supplier_init" sequence="15" action="act_supplier_init_wizard"/>
+        <menuitem name="Nazicht Jobs" parent="christiana_product_import.menu_import_boeken" id="menu_import_job_review" sequence="20" action="import_job_review"/>
 
 <!--        <record id="view_sale_order_tree_lines_import_inherit" model="ir.ui.view">
             <field name="name">view.account.tree.move.lines_import.inherit</field>

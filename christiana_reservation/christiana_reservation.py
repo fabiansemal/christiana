@@ -7,7 +7,7 @@ from datetime import date
 from openerp.osv import fields, osv
 from openerp.tools.translate import _
 from openerp import netsvc
-from gdata.apps.organization.data import CUSTOMER_ID
+# from gdata.apps.organization.data import CUSTOMER_ID
 
 class stock_scan_current(osv.osv):
 	_name = "stock.scan.current"
@@ -27,7 +27,7 @@ class stock_scan(osv.osv):
 		'partner_id': fields.many2one('res.partner', 'Geleverd door', select=True),
 		'line_ids': fields.one2many('stock.scan.line', 'scan_id', 'Ontvangsten'),
 		'date_created': fields.date('Datum Ontvangst'),
-		'state': fields.char('Status'),
+		'state': fields.selection([['draft','Draft'],['done','Verwerkt']],'Status',readonly=True,track_visibility='onchange'),
 		'zichtzending': fields.boolean('Zichtzending'),
 		'delnote_supplier': fields.char('Pakbonnr. Leverancier', select=True),
 	}
@@ -67,7 +67,7 @@ class stock_scan(osv.osv):
 				
 	def action_confirm(self, cr, uid, ids, context=None):
 # PROCESS PO RECEIPTS
-		print 'RECEIPT'
+# 		print 'RECEIPT'
 		for ss in self.browse(cr, uid, ids, context=context):
 			if ss.state != 'draft':
 				raise osv.except_osv(('Fout !'),_('Deze ontvangst is reeds verwerkt'))
@@ -77,7 +77,7 @@ class stock_scan(osv.osv):
 				if ssl.po_line_ids:
 					for sslp in ssl.po_line_ids:
 						if sslp.qty_scan > 0:
-							print 'CREATE PARTIAL MOVE: ',sslp.po_line_id.product_id.default_code
+# 							print 'CREATE PARTIAL MOVE: ',sslp.po_line_id.product_id.default_code
 							pm = self.pool.get('stock.partial.move')
 							pm_id = pm.create(cr, uid, {
 								'date': date.today(),
@@ -104,14 +104,14 @@ class stock_scan(osv.osv):
 										'move_id': mv_id,
 										'quantity': sslp.qty_scan,
 									},context=context)
-									print 'DO PARTIAL'
+# 									print 'DO PARTIAL'
 									pm_rec = pm.do_partial(cr, uid, [pm_line.id], context=context)
 
-		print 'CHANGE STATUS'
-		self.write(cr, uid, ids, {'state': 'done'})
+# 		print 'CHANGE STATUS'
+# 		self.write(cr, uid, ids, {'state': 'done'})
 
 # PROCESS SO RESERVATION
-		print 'RESERVATION'
+# 		print 'RESERVATION'
 		for ss in self.browse(cr, uid, ids, context=context):
 			old_customer_id = 0
 			sql_stat = '''
@@ -123,7 +123,7 @@ where scan_id = %d
   and sale_order.id = stock_scan_line_so.so_id 
 group by customer_id, stock_scan_line_so.product_id, stock_scan_line_so.name, stock_scan_line_so.so_line_id, stock_scan_line_so.so_id, stock_scan_line_so.so_price, stock_scan_line_so.so_discount, sale_order.zichtzending, stock_scan_line_so.qty_scan, partner_shipping_id, stock_scan_line.name, stock_scan_line.combined_vat, stock_scan_line.vat06, stock_scan_line.vat21, awso_code
 order by customer_id, stock_scan_line_so.product_id''' % (ss.id, )
-			print 'SQL STAT:',sql_stat
+# 			print 'SQL STAT:',sql_stat
 			cr.execute(sql_stat)
 			for sql_res in cr.dictfetchall():
 				name = sql_res['name']
@@ -142,8 +142,8 @@ order by customer_id, stock_scan_line_so.product_id''' % (ss.id, )
 				vat21 = sql_res['vat21']
 				awso_code = sql_res['awso_code']
 
-				print 'OLD CUSTOMER:', old_customer_id
-				print 'CUSTOMER:', customer_id
+# 				print 'OLD CUSTOMER:', old_customer_id
+# 				print 'CUSTOMER:', customer_id
 		
 				if old_customer_id != customer_id:
 					old_customer_id = customer_id
@@ -156,7 +156,7 @@ order by customer_id, stock_scan_line_so.product_id''' % (ss.id, )
 					for sql_res in cr.dictfetchall():
 						sr_line_id = sql_res['id']
 					if sr_line_id == 0:
-						print 'CREATE STOCK RESERVATION'
+# 						print 'CREATE STOCK RESERVATION'
 						sr = self.pool.get('stock.reservation')
 						sr_id = sr.create(cr, uid, {
 							'name': ('Levering'),
@@ -171,7 +171,7 @@ order by customer_id, stock_scan_line_so.product_id''' % (ss.id, )
 						sr_line_id = sr_line.id
 
 				sql_stat = "select id from stock_move where sale_line_id = %d" % (so_line_id, )
-				print 'SQL:',sql_stat
+# 				print 'SQL:',sql_stat
 				cr.execute(sql_stat)
 				for sql_res in cr.dictfetchall():
 					mv_id = sql_res['id']
@@ -184,9 +184,9 @@ order by customer_id, stock_scan_line_so.product_id''' % (ss.id, )
 					line_id = sql_res['id']
 					qty_del = sql_res['qty_to_deliver']
 
+				srl = self.pool.get('stock.reservation.line')
 				if line_id == 0:
-					print 'CREATE STOCK RESERVATION LINE', name, sr_line_id
-					srl = self.pool.get('stock.reservation.line')
+# 					print 'CREATE STOCK RESERVATION LINE', name, sr_line_id
 					srl_id = srl.create(cr, uid, {
 						'name': name,
 						'reservation_id': sr_line_id,
@@ -207,10 +207,12 @@ order by customer_id, stock_scan_line_so.product_id''' % (ss.id, )
 					}, context=context)
 				else:
 					qty_del = qty_del + qty_to_deliver
-					sql_stat = 'update stock_reservation_line set qty_to_deliver = %d where id = %d' % (qty_del, line_id, )
-					cr.execute(sql_stat)
+					srl.write(cr, uid, [line_id], {'qty_to_deliver': qty_del}, context=context)
+# 					sql_stat = 'update stock_reservation_line set qty_to_deliver = %d where id = %d' % (qty_del, line_id, )
+# 					cr.execute(sql_stat)
 
-		return True
+# 		print 'CHANGE STATUS'
+		return self.write(cr, uid, ids, {'state': 'done'})
 
 stock_scan()
 
@@ -246,21 +248,21 @@ class stock_scan_line(osv.osv):
 	def onchange_awso_code(self, cr, uid, ids, awso_code, so_line_ids, context=None):
 		res = {}
 		if awso_code and so_line_ids:
-			print 'so line ids:', so_line_ids
+# 			print 'so line ids:', so_line_ids
 			so_line_ids_list = []
 			for soline in so_line_ids:
-				print 'soline:', soline[1]
+# 				print 'soline:', soline[1]
 				so_line_ids_list.append(soline[1])
 				sql_stat = 'select partner_id from stock_scan_line_so where id = %d' % (soline[1], )
 				cr.execute(sql_stat)
 				for sql_res in cr.dictfetchall():
 					sql_stat = "select discount_pct from res_partner_discount where partner_id = %d and awso_code = '%s'" % (sql_res['partner_id'], awso_code, )
-					print sql_stat
+# 					print sql_stat
 					cr.execute(sql_stat)
 					for sql_res in cr.dictfetchall():
 						sql_stat = "update stock_scan_line_so set so_discount = %d where id = %d" % (sql_res['discount_pct'], soline[1], )
 						cr.execute(sql_stat)
-						print sql_stat
+# 						print sql_stat
 			res['so_line_ids'] = so_line_ids_list			
 #			for ssl in self.browse(cr, uid, ids, context=context):
 #				if ssl.so_line_ids:
@@ -457,7 +459,8 @@ order by sale_order_line.create_date''' % (product_id, zichtzending, )
 		return {'value':res}
 
 	def create(self, cr, uid, vals, context=None):
-		print 'VALS:',vals
+# 		print 'CREATE SCAN LINE VALS:',vals
+		
 		if 'name' in vals:
 			sql_stat = "select id from product_product where default_code = '%s'" % (vals['name'], )
 			cr.execute(sql_stat)
@@ -475,21 +478,107 @@ where default_code = '%s' and product_tmpl_id = prod_id''' % (vals['name'], )
 
 		po_line_ids = vals['po_line_ids']
 		so_line_ids = vals['so_line_ids']
+		sumpo = 0.0
+		sumso = 0.0
+		if 'po_line_ids' in vals:
+			po_line_ids = vals['po_line_ids']
+			for pol in po_line_ids:
+				if pol[2] == False:
+					pol1 = self.pool.get('stock.scan.line.po').browse(cr, uid, pol[1], context=context)
+					sumpo += pol1.qty_scan
+				else:
+					if 'qty_scan' in pol[2]:
+						sumpo += pol[2]['qty_scan']
+					else:
+						pol1 = self.pool.get('stock.scan.line.po').browse(cr, uid, pol[1], context=context)
+						sumpo += pol1.qty_scan
+# 		else:
+# 			for pol in ssl.po_line_ids:
+# 				sumpo += pol.qty_scan
+		if 'so_line_ids' in vals:
+			so_line_ids = vals['so_line_ids']
+			for sol in so_line_ids:
+				if sol[2] == False:
+					sol1 = self.pool.get('stock.scan.line.so').browse(cr, uid, sol[1], context=context)
+					sumso += sol1.qty_scan
+				else:
+					if 'qty_scan' in sol[2]:
+						sumso += sol[2]['qty_scan']
+					else:
+						sol1 = self.pool.get('stock.scan.line.so').browse(cr, uid, sol[1], context=context)
+						sumso += sol1.qty_scan
+# 		else:
+# 			for sol in ssl.so_line_ids:
+# 				sumso += sol.qty_scan
+		if sumpo > vals['qty_received'] or sumso > vals['qty_received']:
+			raise osv.except_osv(('Fout!'),_(('Te grote hoeveelheid op PO of SO voor %d') % (product_id )))
+			return False			
+
+		if sumpo < vals['qty_received']:
+			raise osv.except_osv(('Fout!'),_(('Te kleine hoeveelheid op PO voor %d') % (product_id )))
+			return False			
+
 		res = super(stock_scan_line, self).create(cr, uid, vals, context=context)
 		scan = self.browse(cr, uid, res)
-		print 'PO LINE IDS:',po_line_ids
+		
+# 		print 'PO LINE IDS:',po_line_ids
 		for po in po_line_ids:
-			print 'PO:',po
+# 			print 'PO:',po
 			sql_stat = "update stock_scan_line_po set scan_line_id = %d where id = %d" % (scan.id, po[1], )
-			print sql_stat
+# 			print sql_stat
 			cr.execute(sql_stat)
-		print 'SO LINE IDS:',scan.so_line_ids
+# 		print 'SO LINE IDS:',scan.so_line_ids
 		for so in so_line_ids:
 			sql_stat = "update stock_scan_line_so set scan_line_id = %d where id = %d" % (scan.id, so[1], )
 			cr.execute(sql_stat)
-			print sql_stat
+# 			print sql_stat
 		return res
 
+	def write(self, cr, uid, ids, vals, context=None):
+# 		print "write stock_scan_line", ids, vals
+		for id in ids:
+			ssl = self.browse(cr, uid, id, context=context)
+			lijnhoev = ssl.qty_received
+			if 'qty_received' in vals:
+				lijnhoev = vals['qty_received']
+			sumpo = 0.0
+			sumso = 0.0
+			if 'po_line_ids' in vals:
+				po_line_ids = vals['po_line_ids']
+				for pol in po_line_ids:
+					if pol[2] == False:
+						pol1 = self.pool.get('stock.scan.line.po').browse(cr, uid, pol[1], context=context)
+						sumpo += pol1.qty_scan
+					else:
+						if 'qty_scan' in pol[2]:
+							sumpo += pol[2]['qty_scan']
+						else:
+							pol1 = self.pool.get('stock.scan.line.po').browse(cr, uid, pol[1], context=context)
+							sumpo += pol1.qty_scan
+			else:
+				for pol in ssl.po_line_ids:
+					sumpo += pol.qty_scan
+			if 'so_line_ids' in vals:
+				so_line_ids = vals['so_line_ids']
+				for sol in so_line_ids:
+					if sol[2] == False:
+						sol1 = self.pool.get('stock.scan.line.so').browse(cr, uid, sol[1], context=context)
+						sumso += sol1.qty_scan
+					else:
+						if 'qty_scan' in sol[2]:
+							sumso += sol[2]['qty_scan']
+						else:
+							sol1 = self.pool.get('stock.scan.line.so').browse(cr, uid, sol[1], context=context)
+							sumpo += sol1.qty_scan
+			else:
+				for sol in ssl.so_line_ids:
+					sumso += sol.qty_scan
+			if sumpo > lijnhoev or sumso > lijnhoev:
+				raise osv.except_osv(('Fout!'),_(('Te grote hoeveelheid op PO of SO voor %d') % (ssl.product_id )))
+				return False			
+				
+		return super(stock_scan_line, self).write(cr, uid, ids, vals, context=context)
+		
 stock_scan_line()
 
 class stock_scan_line_po(osv.osv):
@@ -511,7 +600,7 @@ class stock_scan_line_po(osv.osv):
 	}
 
 	def create(self, cr, uid, vals, context=None):
-		print 'VALSPO:',vals
+# 		print 'VALSPO:',vals
 		if 'scan_line_id' in vals:
 			del vals['scan_line_id']
 		if 'name' in vals:
@@ -520,15 +609,16 @@ class stock_scan_line_po(osv.osv):
 			return True
 
 	def write(self, cr, uid, ids, vals, context=None):
-		print 'VALSPO:',vals
+# 		print 'VALSPO:',vals
 		if 'scan_line_id' in vals:
 			del vals['scan_line_id']
 		return super(stock_scan_line_po, self).write(cr, uid, ids, vals, context=context)
 
-	def onchange_qty(self, cr, uid, ids, qty1, qty2, context=None):
-		res = {}
+	def onchange_qty(self, cr, uid, ids, qty1, qty2, qty_received, context=None):
+# 		print "on change po qty", ids, qty1, qty2, qty_received
 		error = False
-		if qty1 > qty2:
+
+		if qty1 > qty2 or qty1 > qty_received:
 			error = True
 
 		if error:
@@ -560,7 +650,7 @@ class stock_scan_line_so(osv.osv):
 	}
 
 	def create(self, cr, uid, vals, context=None):
-		print 'VALSSO:',vals
+# 		print 'VALSSO:',vals
 		if 'scan_line_id' in vals:
 			del vals['scan_line_id']
 		if 'name' in vals:
@@ -569,15 +659,15 @@ class stock_scan_line_so(osv.osv):
 			return True
 
 	def write(self, cr, uid, ids, vals, context=None):
-		print 'VALSSO:',vals
+# 		print 'VALSSO:',vals
 		if 'scan_line_id' in vals:
 			del vals['scan_line_id']
 		return super(stock_scan_line_so, self).write(cr, uid, ids, vals, context=context)
 
-	def onchange_qty(self, cr, uid, ids, qty1, qty2, context=None):
-		res = {}
+	def onchange_qty(self, cr, uid, ids, qty1, qty2, qty_received, context=None):
+# 		print "on change so qty", ids, qty1, qty2, qty_received
 		error = False
-		if qty1 > qty2:
+		if qty1 > qty2 or qty1 > qty_received:
 			error = True
 
 		if error:
@@ -624,28 +714,28 @@ class stock_reservation(osv.osv):
 	}
 
 	def onchange_partner(self, cr, uid, ids, partner_id, zichtzending, context=None):
-		 res = {}
-		 print "onchange partner", zichtzending, partner_id
-		 if partner_id:
-		 	sql_stat = "delete from stock_reservation_current where userid = '%d'" % (uid )
-		 	cr.execute(sql_stat)
-		 	cr.commit()
-		 	sql_stat = "insert into stock_reservation_current (userid, partner_id, zichtzending) values ('%d', '%d', '%s')" % (uid, partner_id, zichtzending)
-		 	cr.execute(sql_stat)
-		 	cr.commit()
-		 return res
+		res = {}
+# 		print "onchange partner", zichtzending, partner_id
+		if partner_id:
+			sql_stat = "delete from stock_reservation_current where userid = '%d'" % (uid )
+			cr.execute(sql_stat)
+			cr.commit()
+			sql_stat = "insert into stock_reservation_current (userid, partner_id, zichtzending) values ('%d', '%d', '%s')" % (uid, partner_id, zichtzending)
+			cr.execute(sql_stat)
+			cr.commit()
+		return res
 
 	def onchange_zichtzending(self, cr, uid, ids, zichtzending, partner_id, context=None):
-		 res = {}
-		 print "onchange zichtzending", zichtzending, partner_id
-		 if partner_id:
-		 	sql_stat = "delete from stock_reservation_current where userid = '%d'" % (uid )
-		 	cr.execute(sql_stat)
-		 	cr.commit()
-		 	sql_stat = "insert into stock_reservation_current (userid, partner_id, zichtzending) values ('%d', '%d', '%s')" % (uid, partner_id, zichtzending)
-		 	cr.execute(sql_stat)
-		 	cr.commit()
-		 return res
+		res = {}
+# 		print "onchange zichtzending", zichtzending, partner_id
+		if partner_id:
+			sql_stat = "delete from stock_reservation_current where userid = '%d'" % (uid )
+			cr.execute(sql_stat)
+			cr.commit()
+			sql_stat = "insert into stock_reservation_current (userid, partner_id, zichtzending) values ('%d', '%d', '%s')" % (uid, partner_id, zichtzending)
+			cr.execute(sql_stat)
+			cr.commit()
+		return res
 	
 	def create(self, cr, uid, vals, context=None):
 		"""Add the np sequence reference"""
@@ -679,7 +769,8 @@ order by so_id, so_line_id
 					
 					if srl['so_id'] != prev_so_id:
 						if prev_so_id != 0:
-							pm_rec = pm.do_partial(cr, uid, [pm_id], context=context)						
+							pm_rec = pm.do_partial(cr, uid, [pm_id], context=context)
+# 							print "return from do partial:", pm_rec						
 						create_hdr = False
 						pm = self.pool.get('stock.partial.picking')
 						pm_id = pm.create(cr, uid, {
@@ -698,8 +789,14 @@ order by so_id, so_line_id
 						'move_id': srl['move_id'],
 						'quantity': srl['qty_to_deliver'],
 					},context=context)
+				sql_stat1 = """
+update stock_move set qty_on_reservation = 0
+where stock_move.id = %d
+""" % (srl['move_id'])
+				cr.execute(sql_stat1)
 					
 			pm_rec = pm.do_partial(cr, uid, [pm_id], context=context)
+# 			print "return from do partial:", pm_rec	
 
 # 			create_hdr = True
 # 			for srl in sr.line_ids: 
@@ -731,7 +828,7 @@ order by so_id, so_line_id
 # 					},context=context)
 # 			pm_rec = pm.do_partial(cr, uid, [pm_id], context=context)
 
-		print 'CHANGE STATUS'
+# 		print 'CHANGE STATUS'
 		self.write(cr, uid, ids, {'state': 'done'})
 
 		return True
@@ -791,7 +888,7 @@ order by so_id, so_line_id
 				wf_service.trg_validate(uid, 'stock.picking', pm_id, 'button_confirm', cr)
 				pm.force_assign(cr, uid, [pm_id], context)
 
-		print 'CHANGE STATUS'
+# 		print 'CHANGE STATUS'
 		self.write(cr, uid, ids, {'state': 'returned'})
 
 		return True
@@ -858,7 +955,7 @@ order by so_id, so_line_id
 				invoice_id = invoice_obj.create(cr, uid, invoice_vals, context=context)
 				invoices_group[partner.id] = invoice_id
 			res[reservation.id] = invoice_id
-			print 'INVOICE VALS:', invoice_vals['type']
+# 			print 'INVOICE VALS:', invoice_vals['type']
 			if invoice_vals['type'] in ('out_invoice'):
 # VERKOOPORDERS
 # Toevoegen lijn aan 6% BTW
@@ -912,7 +1009,7 @@ where stock_reservation.id = %d
 					name = pakbon
 					if line['invoice_text']:
 						name = name + ' - ' + line ['invoice_text']
-					print line['pakbon'], line['so_discount'], line['qty_to_deliver'], line['qty_retour'], round(((line['so_price'] * (100 - line['so_discount']) / 100) * (line['qty_to_deliver'] - line['qty_retour'])), 2)
+# 					print line['pakbon'], line['so_discount'], line['qty_to_deliver'], line['qty_retour'], round(((line['so_price'] * (100 - line['so_discount']) / 100) * (line['qty_to_deliver'] - line['qty_retour'])), 2)
 				if bedrag <> 0.00:
 					line_vals = {
 						'name': name,
@@ -975,7 +1072,7 @@ where stock_reservation.id = %d
 				for line in cr.dictfetchall():
 					pakbon = line['pakbon']
 					so = line['so']
-					bedrag += round(((line['so_price'] * (100 - line['so_discount']) / 100) * (line['qty_to_deliver'] - line['qty_retour'])), 2)
+					bedrag += round((round((line['so_price'] * (100 - line['so_discount']) / 100),2) * (line['qty_to_deliver'] - line['qty_retour'])), 2)
 					name = pakbon
 					if line['invoice_text']:
 						name = name + ' - ' + line ['invoice_text']
@@ -1037,18 +1134,21 @@ class stock_reservation_line(osv.osv):
 			res['so_id'] = so.order_id.id
 		return {'value':res}
 
-	def onchange_barcode(self, cr, uid, ids, name, context=None):
+	def onchange_barcode(self, cr, uid, ids, name, partner_id, zichtzending, context=None):
 		
 		res = {}
-		sql_stat = "select partner_id, zichtzending from stock_reservation_current where userid = '%d'" % (uid, )
-		cr.execute(sql_stat)
-		for sql_res in cr.dictfetchall():
-			customer_id = sql_res['partner_id']
-			zichtzending = sql_res['zichtzending']
-			res['customer_id'] = customer_id
-			res['zichtzending'] = zichtzending
-			
-		print 'onchange barcode', ids, name, customer_id 
+# 		sql_stat = "select partner_id, zichtzending from stock_reservation_current where userid = '%d'" % (uid, )
+# 		cr.execute(sql_stat)
+# 		for sql_res in cr.dictfetchall():
+# 			customer_id = sql_res['partner_id']
+# 			zichtzending = sql_res['zichtzending']
+# 			res['customer_id'] = customer_id
+# 			res['zichtzending'] = zichtzending
+
+		customer_id = partner_id
+		res['customer_id'] = customer_id
+		res['zichtzending'] = zichtzending			
+# 		print 'onchange barcode', ids, name, customer_id, zichtzending
 		
 		isbn_found = False
 		po_found = False
@@ -1073,7 +1173,7 @@ class stock_reservation_line(osv.osv):
 					so_id = sql_res['order_id']
 					res['so_line_id'] = so_line_id
 					res['so_id'] = so_id
- 
+
 		if not isbn_found:
 			raise osv.except_osv(('Waarschuwing !'),_(('Boek met ISBN barcode %s bestaat niet in de data base') % (name, )))
 #			return
@@ -1085,10 +1185,10 @@ class stock_reservation_line(osv.osv):
 
 	def create(self, cr, uid, vals, context=None):
 		if not ('scan_procedure' in vals):
-			print 'RESERVATION LINE CREATE VALS:',vals
+# 			print 'RESERVATION LINE CREATE VALS:',vals
 #			vals['qty_to_deliver'] = 1.00
 			
-			sql_stat = "select id from stock_move where sale_line_id = %d" % (vals['so_line_id'], )
+			sql_stat = "select id from stock_move where not(state = 'done') and sale_line_id = %d" % (vals['so_line_id'], )
 			cr.execute(sql_stat)
 			for sql_res in cr.dictfetchall():
 				vals['move_id'] = sql_res['id']
@@ -1100,16 +1200,26 @@ where stock_move.id = %d
 			cr.execute(sql_stat1)
 
 			sql_stat2 = """
-update stock_reservation set invoice_type_id = (select invoice_type_id from sale_order where sale_order.id = %d)
+update stock_reservation set invoice_type_id = (select invoice_type_id from sale_order, sale_order_line where sale_order_line.order_id = sale_order.id and sale_order_line.id = %d)
 where stock_reservation.id = %d
-""" % (vals['so_id'], vals['reservation_id'])
+""" % (vals['so_line_id'], vals['reservation_id'])
 			cr.execute(sql_stat2)
 
+			sql_stat3 = """
+select order_id, sale_order.partner_id, sale_order.zichtzending from sale_order, sale_order_line where sale_order_line.order_id = sale_order.id and sale_order_line.id = %d
+""" % (vals['so_line_id'])
+			cr.execute(sql_stat3)
+			sql_res = cr.dictfetchone()
+			if sql_res:
+				vals['so_id'] = sql_res['order_id']
+				vals['partner_id'] = sql_res['partner_id']
+				vals['zichtzending'] = sql_res['zichtzending']
+				
 		return super(stock_reservation_line, self).create(cr, uid, vals, context=context)
 
 	def write(self, cr, uid, ids, vals, context=None):
-		print 'RESERVATION LINE WRITE VALS', vals
-		print 'RESERVATION LINE WRITE ids', ids
+# 		print 'RESERVATION LINE WRITE VALS', vals
+# 		print 'RESERVATION LINE WRITE ids', ids
 		if 'qty_to_deliver' in vals:
 			for id in ids:
 				sql_stat = """
@@ -1121,7 +1231,7 @@ where stock_reservation_line.id = %d and stock_move.id = stock_reservation_line.
 				move_id = sql_res['id']
 				old_qty_on_reservation = sql_res['qty_on_reservation']
 				old_qty_to_deliver = sql_res['qty_to_deliver']
-				print "data", move_id, old_qty_on_reservation, old_qty_to_deliver
+# 				print "data", move_id, old_qty_on_reservation, old_qty_to_deliver, vals['qty_to_deliver']
 				qty_on_reservation = old_qty_on_reservation - old_qty_to_deliver + vals['qty_to_deliver']
 	
 				sql_stat1 = """
@@ -1143,7 +1253,7 @@ where stock_reservation_line.id = %d and stock_move.id = stock_reservation_line.
 				move_id = sql_res['id']
 				old_qty_on_reservation = sql_res['qty_on_reservation']
 				old_qty_to_deliver = sql_res['qty_to_deliver']
-				print "data", move_id, old_qty_on_reservation, old_qty_to_deliver
+# 				print "data", move_id, old_qty_on_reservation, old_qty_to_deliver
 				qty_on_reservation = old_qty_on_reservation - old_qty_to_deliver
 	
 			sql_stat1 = """
@@ -1160,6 +1270,15 @@ where stock_move.id = %d
 		for sr in self.browse(cr, uid, ids):
 			if sr.product_id:
 				res[sr.id] = sr.product_id.name_template
+		return res
+
+	def _calc_amount(self, cr, uid, ids, name, arg, context=None):
+		res = {}
+		for sr in self.browse(cr, uid, ids):
+			if sr.combined_vat:
+				res[sr.id] = round(((sr.vat06 * (100 - sr.so_discount) / 100) * (sr.qty_to_deliver - sr.qty_retour)), 2) + round(((sr.vat21 * (100 - sr.so_discount) / 100) * (sr.qty_to_deliver - sr.qty_retour)), 2)
+			else:
+				res[sr.id] = round(((sr.so_price * (100 - sr.so_discount) / 100) * (sr.qty_to_deliver - sr.qty_retour)), 2)
 		return res
 
 	_columns = {
@@ -1182,6 +1301,7 @@ where stock_move.id = %d
 		'awso_code': fields.selection((('A','Algemeen'),('W','Wetenschappelijk'),('S','Studie'),('O','Overige')),'AWSO Code'),
 		'state': fields.related('reservation_id', 'state', string='Status', type='char'),
 		'qty_retour': fields.float('Hoev. Retour'),
+		'to_invoice_vat_incl': fields.function(_calc_amount, string="Fact.Bedrag", type='float'),
 	}
 
 	_defaults = {
@@ -1229,7 +1349,7 @@ class sale_order_line(osv.osv):
 			return []
 
 		res = []
- 		for line in self.browse(cr, uid, ids, context=context):
+		for line in self.browse(cr, uid, ids, context=context):
 			if line.product_id:
 				name = '[%s] %s' % (line.order_id.name, line.product_id.default_code)
 			else:

@@ -50,8 +50,9 @@
             <field name='arch' type='xml'>
 			<form string="Ontvangstbon" version="7.0">
 		    <header>
-                        <button name="action_load" string="ISBN's Laden" type="object"/>
-                        <button name="action_confirm" string="Verwerk Ontvangst" type="object" class="oe_highlight"/>
+                <button name="action_load" string="ISBN's Laden" type="object"/>
+                <button name="action_confirm" string="Verwerk Ontvangst" states="draft" type="workflow" class="oe_highlight"/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
 		    </header>
 		    <sheet>
 			<group colspan="4" col="2">
@@ -97,7 +98,7 @@
 					    <field name="qty_ordered" readonly="True" widget="integer"/> 
 					    <field name="qty_scanned" readonly="True" widget="integer"/> 
 					    <field name="qty_to_scan" readonly="True" widget="integer"/> 
-					    <field name="qty_scan" sum="Totaal" on_change="onchange_qty(qty_scan, qty_to_scan)" widget="integer"/> 
+					    <field name="qty_scan" sum="Totaal" on_change="onchange_qty(qty_scan, qty_to_scan, parent.qty_received)" widget="integer"/> 
 					    <field name="zichtzending" readonly="True"/> 
 		 			</tree>
 				    </field>
@@ -110,7 +111,7 @@
 					    <field name="qty_ordered" readonly="True" widget="integer"/> 
 					    <field name="qty_reserved" readonly="True" widget="integer"/> 
 					    <field name="qty_to_reserv" readonly="True" widget="integer"/> 
-					    <field name="qty_scan" sum="Totaal" on_change="onchange_qty(qty_scan, qty_to_reserv)" widget="integer"/> 
+					    <field name="qty_scan" sum="Totaal" on_change="onchange_qty(qty_scan, qty_to_reserv, parent.qty_received)" widget="integer"/> 
 					    <field name="so_price"/> 
 					    <field name="so_discount"/> 
 					    <field name="zichtzending" readonly="True"/> 
@@ -231,12 +232,12 @@
 			    </group>
 			</group>
 		    <group colspan="4">
-			    <separator string="Reserva)ties" colspan="4"/>
+			    <separator string="Reservaties" colspan="4"/>
 			    <field name="line_ids" nolabel="1" context="{'default_reservation_id':active_id}">
 			    	<form string="Reservatie">
 					    <group colspan="4" col="2">
 						    <group>
-							    <field name="name" on_change="onchange_barcode(name)" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
+							    <field name="name" on_change="onchange_barcode(name, parent.partner_id, parent.zichtzending)" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
 							    <field name="product_id" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
 							    <field name="awso_code" readonly="True"/>
 								<field name="state" invisible="True"/>
@@ -314,6 +315,7 @@
 			<field name="qty_retour" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
 		    <field name="so_price" attrs="{'readonly':[('state','!=','draft')]}"/>
 		    <field name="so_discount" attrs="{'readonly':[('state','!=','draft')]}"/>
+		    <field name="to_invoice_vat_incl" sum="Waarde" readonly="True"/>
 		</tree>
 	    </field>
         </record>

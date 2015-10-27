@@ -239,6 +239,7 @@ td.vat {
 	                <th style="text-align:center;width:50px;">${_("Aantal")}</th>
 	                <th style="text-align:center;width:50px;">${_("EH Prijs")}</th>
 	                <th style="text-align:center;width:50px;">${_("Korting")}</th>
+	                <th style="text-align:center;width:30px;">${_("BTW %")}</th>
 	                <th style="text-align:center;width:50px;">${_("VP incl BTW")}</th>
 	            </tr>
 	        </thead>
@@ -248,20 +249,32 @@ td.vat {
 	        aantal = 0.00
 	        %>
             %for line in inv.line_ids :
-                <% lineqty = line.qty_to_deliver - line.qty_retour %>
+                <% 
+                lineqty = line.qty_to_deliver - line.qty_retour
+                %>
                 %if lineqty > 0.00 :
-                    <%
-                    tot = round(((line.so_price * (100 - line.so_discount) / 100) * lineqty), 2)
-                    totaal += tot
-                    aantal += lineqty
-                    %>
-               
+                	%if line.combined_vat:
+						<%
+						tot = round(((line.vat06 * (100 - line.so_discount) / 100) * lineqty), 2) 
+						tot += round(((line.vat21 * (100 - line.so_discount) / 100) * lineqty), 2) 
+						totaal += tot
+						aantal += lineqty
+                		%>
+                	%else:
+	                    <%
+	                    tot = round(((line.so_price * (100 - line.so_discount) / 100) * lineqty), 2) 
+	                    totaal += tot
+	                    aantal += lineqty
+	                    %>
+           			%endif
                     <tr >
                         <td VALIGN="top">${line.product_id and line.product_id.default_code or ''}</td>
                         <td VALIGN="top">${line.product_id and line.product_id.product_tmpl_id and  line.product_id.product_tmpl_id.name or ''}
+<!--
                             %if line.product_id.ondertitel:
                                 <br/>${line.product_id and line.product_id.ondertitel}
                             %endif
+-->
                         </td>   
                         <td VALIGN="top">
                             %if line.product_id.author_id:
@@ -270,10 +283,62 @@ td.vat {
                         </td>
                         <td style="text-align:center;" VALIGN="top">${line.awso_code or ''}</td>
                         <td class="amount" VALIGN="top">${formatLang(lineqty or 0.0,digits=get_digits(dp='Account'))}</td>
-                        <td class="amount" VALIGN="top">${formatLang(line.so_price, digits=get_digits(dp='Account'))}</td>
+                        <td class="amount" VALIGN="top" style="text-align:right;">
+                    		%if line.combined_vat:
+								${formatLang(line.vat06, digits=get_digits(dp='Account'))}
+<!--
+								<br/>${formatLang(line.vat21, digits=get_digits(dp='Account'))}
+-->
+                			%else:
+								${formatLang(line.so_price, digits=get_digits(dp='Account'))}
+            				%endif 
+                    	</td>
                         <td class="amount" VALIGN="top">${formatLang(line.so_discount, digits=get_digits(dp='Account'))} %</td>
+                        <td style="text-align:right;" VALIGN="top">
+                        	%if line.combined_vat:
+                        		6 %
+<!--
+                        		<br/>21 %
+-->
+                        	%else:
+                        		%if line.so_line_id and line.so_line_id.tax_id:
+                        			%if line.so_line_id.tax_id[0].id == 6:
+                        				6 %
+                    				%else:
+                    					21 %
+                					%endif
+            					%endif
+                    		%endif
+                        </td>
                         <td class="amount" VALIGN="top">${formatLang(tot, digits=get_digits(dp='Account'))}</td>
                     </tr>
+                    
+                    %if line.combined_vat or line.product_id.ondertitel:
+	                    <tr>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top"></td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top">
+	                            %if line.product_id.ondertitel:
+	                                ${line.product_id and line.product_id.ondertitel}
+	                            %endif                    	
+	                    	</td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top"></td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top"></td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top"></td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" class="amount" VALIGN="top" style="text-align:right;">
+	                    		%if line.combined_vat:
+									${formatLang(line.vat21, digits=get_digits(dp='Account'))}
+								%endif
+	                    	</td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top"></td>
+	                    	<td style="text-align:right; border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top">
+	                    		%if line.combined_vat:
+	                        		21 %
+	                    		%endif
+	                    	</td>
+	                    	<td style="border-top:none;padding-top:1px;padding-bottpm:1px;" VALIGN="top"></td>		                   	
+	                    </tr>
+                    %endif
+                    
                 %endif
             %endfor
 

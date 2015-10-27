@@ -211,7 +211,7 @@ class missing_product_import_wizard(osv.TransientModel):
                         'type': 'product',
                         'sale_delay': 0.00,
                         'supply_method': 'buy',
-                        'procure_method': 'make_to_order',
+                        'procure_method': 'make_to_stock',
                         'purchase_ok': True,
                         'unique_name': isbn_nummer,
                         'list_price': verkoopprijs,

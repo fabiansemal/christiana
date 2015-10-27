@@ -237,7 +237,7 @@ class sale_order_line(osv.osv):
         res = {}
         res['value'] = {}
         sql_stat = "select id as product_id from product_product where default_code = '%s'" % (isbn_number, )
-        print 'SQL_STAT:',sql_stat
+#         print 'SQL_STAT:',sql_stat
         cr.execute(sql_stat)
         for sql_res in cr.dictfetchall():
             res['value']['product_id'] = sql_res['product_id']
@@ -253,7 +253,7 @@ class sale_order_line(osv.osv):
 
         discount = 0.00
 
-        print 'ZICHTZENDING:',zichtzending
+#         print 'ZICHTZENDING:',zichtzending
 # partner and product
         sql_stat = '''select discount_pct 
 from res_partner_discount d, product_product p
@@ -261,14 +261,14 @@ where d.partner_id = %d
   and p.id = %d 
   and ((d.awso_code = p.awso_code and %s = False)
    or  (d.awso_code = 'Z' and %s = True))''' % (partner_id, product, zichtzending, zichtzending, )
-        print 'SQL_STAT:',sql_stat
+#         print 'SQL_STAT:',sql_stat
         cr.execute(sql_stat)
         for sql_res in cr.dictfetchall():
             discount = sql_res['discount_pct']
 
         res['value']['discount'] = discount
 
-        print 'RES:',res
+#         print 'RES:',res
         if 'warning' in res:
             res['warning'] = {}
 
@@ -298,7 +298,7 @@ where d.partner_id = %d
                     message = partner_info.sale_qty_warn_msg
                 else:
                     message = "Maximum aantal boeken overschreden"
-                print 'MESSAGE:',message
+#                 print 'MESSAGE:',message
                 if not warning:
                     warning = True
                     res['warning'] = {}
@@ -333,18 +333,18 @@ class account_invoice(osv.osv):
             if invl.product_id:
                 product_obj = self.pool.get('product.product')
                 product_info = product_obj.browse(cr, uid, invl.product_id.id)
-                print product_info.default_code
-                print product_info.combined_vat
+#                 print product_info.default_code
+#                 print product_info.combined_vat
                 if product_info.combined_vat:
                     message = message + ' ' + invl.product_id.default_code
-                    print message
+#                     print message
                     if not warning:
                         warning = True
 #		        res['warning'] = {}
 
         if warning:
             sql_stat = "update account_invoice set combined_vat_flag = %s, combined_vat = '%s' where id = %d" % (warning, message, inv.id, )
-            print 'SQL:',sql_stat
+#             print 'SQL:',sql_stat
             cr.execute(sql_stat)
 
         return res
@@ -385,6 +385,27 @@ class account_invoice_line(osv.osv):
         'vat21': fields.float('Bedrag BTW 21%'),
         }
 
+    def product_id_change(self, cr, uid, ids, product, uom_id, qty=0, name='', type='out_invoice', partner_id=False, fposition_id=False, price_unit=False, currency_id=False, context=None, company_id=None):
+        res_final = super(account_invoice_line, self).product_id_change(cr, uid, ids, product, uom_id, qty, name, type, partner_id, fposition_id, price_unit, currency_id, context, company_id)
+        if context is None:
+            context = {}
+        if not partner_id:
+            raise osv.except_osv(_('No Partner Defined!'),_("You must first select a partner!") )
+        if not product:
+            return res_final
+        discount = 0.00
+        sql_stat = '''select discount_pct 
+from res_partner_discount d, product_product p
+where d.partner_id = %d 
+  and p.id = %d 
+  and d.awso_code = p.awso_code''' % (partner_id, product)
+#         print 'SQL_STAT:',sql_stat
+        cr.execute(sql_stat)
+        for sql_res in cr.dictfetchall():
+            discount = sql_res['discount_pct']
+        res_final['value']['discount'] = discount
+        return res_final
+    
 account_invoice_line()
 
 class purchase_order(osv.osv):
@@ -393,13 +414,13 @@ class purchase_order(osv.osv):
     def _function_distributeur(self, cr, uid, ids, name, arg, context=None):
         res = {}
         for po in self.browse(cr, uid, ids):
-            print 'PO-ID:',po.id
+#             print 'PO-ID:',po.id
             if po.id:
                 distributeur = ''
                 sql_stat = '''select distinct product_product.distributeur from purchase_order_line, product_product where product_id = product_product.id and order_id =  %d''' % (po.id, )
                 cr.execute(sql_stat)
             for sql_res in cr.dictfetchall():
-                print 'DISTR:',sql_res['distributeur']
+#                 print 'DISTR:',sql_res['distributeur']
                 if distributeur == '':
                     distributeur = sql_res['distributeur']
                 else:
@@ -436,7 +457,7 @@ class purchase_order_line(osv.osv):
     def _function_distributeur(self, cr, uid, ids, name, arg, context=None):
         res = {}
         for po in self.browse(cr, uid, ids):
-            print 'PO-ID:',po.id
+#             print 'PO-ID:',po.id
             if po.id:
                 distributeur = ''
                 sql_stat = '''select distinct distributeur from product_product where id = %d''' % (po.product_id, )
@@ -457,7 +478,7 @@ class purchase_order_line(osv.osv):
         res = {}
         res['value'] = {}
         sql_stat = "select id as product_id from product_product where default_code = '%s'" % (isbn_number, )
-        print 'SQL_STAT:',sql_stat
+#         print 'SQL_STAT:',sql_stat
         cr.execute(sql_stat)
         for sql_res in cr.dictfetchall():
             res['value']['product_id'] = sql_res['product_id']
@@ -698,7 +719,7 @@ class stock_move(osv.osv):
         return res
 
     def create(self, cr, uid, vals, context=None):
-        print 'Stock Move aanmaken met', vals
+#         print 'Stock Move aanmaken met', vals
         if 'purchase_line_id' in vals:
             sql_stat = '''select zichtzending from purchase_order, purchase_order_line where purchase_order.id = purchase_order_line.order_id and purchase_order_line.id = %d''' % vals['purchase_line_id']
             cr.execute(sql_stat)
@@ -710,6 +731,15 @@ class stock_move(osv.osv):
             for sql_res in cr.dictfetchall():
                 vals['zichtzending'] = sql_res['zichtzending']
         return super(stock_move, self).create(cr, uid, vals, context=context)
+
+    def write(self, cr, uid, ids, vals, context=None):
+#         print 'Stock Move wijzigen met', ids, vals
+#         if 'sale_line_id' in vals:
+#             sql_stat = '''select zichtzending from sale_order, sale_order_line where sale_order.id = sale_order_line.order_id and sale_order_line.id = %d''' % vals['sale_line_id']
+#             cr.execute(sql_stat)
+#             for sql_res in cr.dictfetchall():
+#                 vals['zichtzending'] = sql_res['zichtzending']
+        return super(stock_move, self).write(cr, uid, ids, vals, context=context)
     
     _columns = {
         'distributeur_search': fields.function(_function_distributeur, string='Distributeur', type='char', store=True),

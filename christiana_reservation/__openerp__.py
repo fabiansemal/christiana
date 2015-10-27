@@ -9,6 +9,7 @@
 	"depends" : ["product","sale","sale_journal","stock","purchase","procurement"],
 	"init_xml" : [],
 	"demo_xml" : [],
-	"update_xml" : ["christiana_reservation_view.xml"],
+	"data" : ["christiana_reservation_view.xml",
+			"christiana_reservation_workflow.xml"],
 	"installable": True
 }

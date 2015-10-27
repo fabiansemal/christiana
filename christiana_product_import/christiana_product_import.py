@@ -35,6 +35,21 @@ import csv
 import base64
 from tools.translate import _
 
+import logging
+logger = logging.getLogger(__name__)
+
+class import_job_log(osv.osv):
+    _name = "import.job.log"
+    
+    _columns = {
+        'jobname': fields.char('Job'),
+        'jobtext': fields.char('Tekst'),
+        'jobrecs': fields.integer('Aantal records'),
+        'write_date' : fields.datetime('Date Created', readonly=True),
+    }
+    
+    _order = "id desc"
+    
 class supplier_import_wizard(osv.TransientModel):
     _name = "supplier.import.wizard"
 
@@ -56,8 +71,21 @@ class supplier_import_wizard(osv.TransientModel):
 
         nbr_lines = 0
         nbr_lines_1000 = 0
+        
+        joblog_obj = self.pool.get('import.job.log')
+        joblog_obj.create(cr, uid, {
+                        'jobname': 'Import leveranciers',
+                        'jobtext': 'Gestart',
+                        'jobrecs': 0,
+                    }, context=context)
+        joblog = joblog_obj.create(cr, uid, {
+                        'jobname': 'Import leveranciers',
+                        'jobtext': 'Loopt',
+                        'jobrecs': 0,
+                    }, context=context)
+        cr.commit()
 
-        print 'Import suppliers started'
+        logger.info('Import suppliers started')
         for row in reader:
             if reader.line_num <= 1:
                 continue
@@ -162,11 +190,15 @@ class supplier_import_wizard(osv.TransientModel):
             nbr_lines = nbr_lines + 1
             nbr_lines_1000 = nbr_lines_1000 + 1
             if nbr_lines_1000 == 1000:
-                print "Number of lines processed: ", nbr_lines
+                logger.info('Number of lines processed: %s' % nbr_lines)
+                joblog_obj.write(cr, uid, joblog, {'jobrecs':nbr_lines})
+                cr.commit()
                 nbr_lines_1000 = 0
 
-        print "End of Import Job - Number of lines processed: ", nbr_lines
+        logger.info('Number of lines processed: %s' % nbr_lines)
+        joblog_obj.write(cr, uid, joblog, {'jobtext':'Beeindigd', 'jobrecs':nbr_lines})
         cr.commit()
+        logger.info('End of Import Job - Number of lines processed: %s' % nbr_lines)
         raise osv.except_osv(_('Verwerkt'), _('Number of lines processed: ' + str(nbr_lines)))
         return True
 
@@ -199,12 +231,28 @@ class author_import_wizard(osv.TransientModel):
         nbr_authors = 0
         nbr_co_authors = 0
 
+        joblog_obj = self.pool.get('import.job.log')
+        joblog_obj.create(cr, uid, {
+                        'jobname': 'Import auteurs',
+                        'jobtext': 'Gestart',
+                        'jobrecs': 0,
+                    }, context=context)
+        joblog = joblog_obj.create(cr, uid, {
+                        'jobname': 'Import auteurs',
+                        'jobtext': 'Loopt',
+                        'jobrecs': 0,
+                    }, context=context)
+        cr.commit()
+
         print 'Import authors started'
+        logger.info('Import authors started')
         for row in reader:
             nbr_lines = nbr_lines + 1
             nbr_lines_1000 = nbr_lines_1000 + 1
             if nbr_lines_1000 == 1000:
-                print "Number of lines processed: ", nbr_lines
+                logger.info('Number of lines processed: %s' % nbr_lines)
+                joblog_obj.write(cr, uid, joblog, {'jobrecs':nbr_lines})
+                cr.commit()
                 nbr_lines_1000 = 0
 
             if reader.line_num <= 1:
@@ -253,7 +301,9 @@ class author_import_wizard(osv.TransientModel):
         print "End of Import Job - Number of lines processed: ", nbr_lines
         print "Nbr of authors added: ", nbr_authors
         print "Nbr of co_authors added: ", nbr_co_authors
+        joblog_obj.write(cr, uid, joblog, {'jobtext':'Beeindigd', 'jobrecs':nbr_lines})
         cr.commit()
+        logger.info('End of Import Job - Number of lines processed: %s' % nbr_lines)
         raise osv.except_osv(_('Verwerkt'), _('Number of lines processed: ' + str(nbr_lines)))
         return True
 
@@ -278,7 +328,11 @@ class product_import_wizard(osv.TransientModel):
 
         # Find the company
         company = self.pool.get('res.users').browse(cr, uid, uid).company_id.id             
-
+        tmpl_obj = self.pool.get('product.template')
+        prod_obj = self.pool.get('product.product')
+        co_obj = self.pool.get('res.co.author')
+        auth_obj = self.pool.get('res.author')
+        cat_obj = self.pool.get('product.category')
         # Find boekenbank.be
 #        supplier_found = False
 #        supplier_search = self.pool.get('res.partner').search(cr, uid, [('name','=','Boekenbank vzw')])
@@ -295,12 +349,28 @@ class product_import_wizard(osv.TransientModel):
         nbr_product_template_c = 0
         nbr_product_product_c = 0
 
+        joblog_obj = self.pool.get('import.job.log')
+        joblog_obj.create(cr, uid, {
+                        'jobname': 'Import boeken',
+                        'jobtext': 'Gestart',
+                        'jobrecs': 0,
+                    }, context=context)
+        joblog = joblog_obj.create(cr, uid, {
+                        'jobname': 'Import boeken',
+                        'jobtext': 'Loopt',
+                        'jobrecs': 0,
+                    }, context=context)
+        cr.commit()
+
         print 'Import products started'
+        logger.info('Start of Import Products Job')
         for row in reader:
             nbr_lines = nbr_lines + 1
             nbr_lines_1000 = nbr_lines_1000 + 1
-            if nbr_lines_1000 == 1000:
-                print "Number of lines processed: ", nbr_lines
+            if nbr_lines_1000 == 5000:
+                logger.info('Number of lines processed: %s' % nbr_lines)
+                joblog_obj.write(cr, uid, joblog, {'jobrecs':nbr_lines})
+                cr.commit()
                 nbr_lines_1000 = 0
 
             if reader.line_num <= 1:
@@ -315,17 +385,18 @@ class product_import_wizard(osv.TransientModel):
             uitgevernummer = row[3]
             distributeur = row[4]
             druknummer = row[5]
-            verschijningsdatum = row[6][0:2] + '/' + row[6][2:4] + '/' + row[6][4:8]
+            verschijningsdatum = row[6][4:8] + '/' + row[6][2:4] + '/' + row[6][0:2]
+#             verschijningsdatum = row[6][0:2] + '/' + row[6][2:4] + '/' + row[6][4:8]
             fondscode = row[7]
             reeksnummer = row[8]
-            nugi_code = row[9]
+#             nugi_code = row[9]
             awso_code = row[10]
             artikel_status = row[11]
             uitgavesoort = row[12]
             uitvoering = row[13]
             voorraadcode = row[14]
             netwerkcode = row[15]
-            bestellen_boekhandel = row[16]
+#             bestellen_boekhandel = row[16]
             btw_code = row[17]
             isbn_nummer = row[18]
             ean_code = row[19]
@@ -341,13 +412,13 @@ class product_import_wizard(osv.TransientModel):
                 illustraties = True
             else:
                 illustraties = False
-            min_bestelaantal = row[26]
-            historisch = row[27]
+#             min_bestelaantal = row[26]
+#             historisch = row[27]
             depotnummer = row[28]
             co_edities = row[29]
             substituut_isbn = row[30]
             nur1 = row[31]
-            nur2 = row[32]
+#             nur2 = row[32]
             hoofdtitel = row[33]
             ondertitel = row[34]
             sectietitel = row[35]
@@ -357,7 +428,7 @@ class product_import_wizard(osv.TransientModel):
             taalcode = row[39]
             oorspronkelijke_taal = row[40]
             oorspronkelijke_titel = row[41]
-            bijkomende_prijsinfo = row[42]
+#             bijkomende_prijsinfo = row[42]
             avi_niveau = row[43]
             jaar_1ste_verschijning = row[44]
             imprint = row[45]
@@ -381,7 +452,7 @@ class product_import_wizard(osv.TransientModel):
                 uitvoering = 'AA'
             if not (voorraadcode == 'V' or voorraadcode == 'S' or voorraadcode == 'I' or voorraadcode == 'P' or voorraadcode == 'N' or voorraadcode == 'O' or voorraadcode == 'T' or voorraadcode == ''):
                 print 'VOORRAADCODE:', voorraadcode
-                voorraadocde = 'V'
+                voorraadcode = 'V'
             if not (netwerkcode == 'J' or netwerkcode == 'N' or netwerkcode == ''):
                 print 'NETWERKCODE:', netwerkcode
                 netwerkcode = 'J'
@@ -398,8 +469,8 @@ class product_import_wizard(osv.TransientModel):
             nur1_id = None
             if nur1 != "":
                 nur1_found = False
-                nur1_search = self.pool.get('product.category').search(cr, uid, [('name','=',nur1)])
-                for nur1_rec in self.pool.get('product.category').browse(cr, uid, nur1_search):
+                nur1_search = cat_obj.search(cr, uid, [('name','=',nur1)])
+                for nur1_rec in cat_obj.browse(cr, uid, nur1_search):
                     nur1_id = nur1_rec.id
                     nur1_found = True
                 if not nur1_found:
@@ -408,32 +479,32 @@ class product_import_wizard(osv.TransientModel):
                         'type': 'normal',
                         'parent_id': 1,
                     }
-                    nur1_id = self.pool.get('product.category').create(cr, uid, vals)   
+                    nur1_id = cat_obj.create(cr, uid, vals)   
                     nbr_product_categs = nbr_product_categs + 1  
 
 # AUTEURSS
             auteur_id = None
             if auteur != "":
-                auteur_found = False
-                auteur_search = self.pool.get('res.author').search(cr, uid, [('name','=',auteur)])
-                for auteur_rec in self.pool.get('res.author').browse(cr, uid, auteur_search):
+#                 auteur_found = False
+                auteur_search = auth_obj.search(cr, uid, [('name','=',auteur)])
+                for auteur_rec in auth_obj.browse(cr, uid, auteur_search):
                     auteur_id = auteur_rec.id
-                    auteur_found = True
+#                     auteur_found = True
 # CO-AUTEURS
             co_auteur_id = None
             if co_auteur != "":
-                co_auteur_found = False
-                co_auteur_search = self.pool.get('res.co.author').search(cr, uid, [('name','=',co_auteur)])
-                for co_auteur_rec in self.pool.get('res.co.author').browse(cr, uid, co_auteur_search):  
+#                 co_auteur_found = False
+                co_auteur_search = co_obj.search(cr, uid, [('name','=',co_auteur)])
+                for co_auteur_rec in co_obj.browse(cr, uid, co_auteur_search):  
                     co_auteur_id = co_auteur_rec.id
-                    co_auteur_found = True
+#                     co_auteur_found = True
 
 # PRODUCT TEMPLATE   
-            if btw_code == 0 or btw_code == 1 or btw_code == 2:
+            if btw_code == '0' or btw_code == '1' or btw_code == '2' or btw_code == None:
                 supplier_btw_code_id = 20
             else:
                 supplier_btw_code_id = 14
-            if btw_code == 0 or btw_code == 1 or btw_code == 2:
+            if btw_code == '0' or btw_code == '1' or btw_code == '2' or btw_code == None:
                 cust_btw_code_id = 6
             else:
                 cust_btw_code_id = 2
@@ -441,8 +512,8 @@ class product_import_wizard(osv.TransientModel):
             product_template_id = None
             if isbn_nummer != "":
                 product_template_found = False
-                product_template_search = self.pool.get('product.template').search(cr, uid, [('unique_name','=',isbn_nummer)])
-                for product_template_rec in self.pool.get('product.template').browse(cr, uid, product_template_search):
+                product_template_search = tmpl_obj.search(cr, uid, [('unique_name','=',isbn_nummer)])
+                for product_template_rec in tmpl_obj.browse(cr, uid, product_template_search):
                     product_template_id = product_template_rec.id
                     product_template_found = True
                 if not product_template_found:
@@ -474,7 +545,7 @@ class product_import_wizard(osv.TransientModel):
                         'supplier_taxes_id': [supplier_btw_code_id],
                         'taxes_id': [cust_btw_code_id],
                     }
-                    product_template_id = self.pool.get('product.template').create(cr, uid, vals)   
+                    product_template_id = tmpl_obj.create(cr, uid, vals)   
                     nbr_product_template_a = nbr_product_template_a + 1  
                 else:
                     vals = {
@@ -486,15 +557,15 @@ class product_import_wizard(osv.TransientModel):
                         'categ_id': nur1_id,
                         'name': verkorte_titel[:128],
                     }
-                    product_template_upd = self.pool.get('product.template').write(cr, uid, [product_template_id], vals)   
+                    product_template_upd = tmpl_obj.write(cr, uid, [product_template_id], vals)   
                     nbr_product_template_c = nbr_product_template_c + 1  
 
 # PRODUCT PRODUCT   
             product_product_id = None
             if isbn_nummer != "":
                 product_product_found = False
-                product_product_search = self.pool.get('product.product').search(cr, uid, [('default_code','=',isbn_nummer)])
-                for product_product_rec in self.pool.get('product.product').browse(cr, uid, product_product_search):
+                product_product_search = prod_obj.search(cr, uid, [('default_code','=',isbn_nummer)])
+                for product_product_rec in prod_obj.browse(cr, uid, product_product_search):
                     product_product_id = product_product_rec.id
                     product_product_found = True
                 if not product_product_found:
@@ -549,7 +620,7 @@ class product_import_wizard(osv.TransientModel):
                         'combined_vat': combined_vat,
                         'btw_code_file': btw_code,
                     }
-                    product_product_id = self.pool.get('product.product').create(cr, uid, vals)   
+                    product_product_id = prod_obj.create(cr, uid, vals)   
                     nbr_product_product_a = nbr_product_product_a + 1  
 
 #                    if supplier_found:
@@ -613,7 +684,7 @@ class product_import_wizard(osv.TransientModel):
                         'combined_vat': combined_vat,
                         'btw_code_file': btw_code,
                     }
-                    product_product_upd = self.pool.get('product.product').write(cr, uid, [product_product_id], vals)   
+                    product_product_upd = prod_obj.write(cr, uid, [product_product_id], vals)   
                     nbr_product_product_c = nbr_product_product_c + 1  
 
             cr.commit()
@@ -624,7 +695,9 @@ class product_import_wizard(osv.TransientModel):
         print "Nbr of product templates changed: ", nbr_product_template_c
         print "Nbr of product products added: ", nbr_product_product_a
         print "Nbr of product products changed: ", nbr_product_product_c
+        joblog_obj.write(cr, uid, joblog, {'jobtext':'Beeindigd', 'jobrecs':nbr_lines})
         cr.commit()
+        logger.info('End of Import Job - Number of lines processed: %s' % nbr_lines)
         raise osv.except_osv(_('Verwerkt'), _('Number of lines processed: ' + str(nbr_lines)))
         return True
 
@@ -636,6 +709,21 @@ class supplier_init_wizard(osv.TransientModel):
 
     def supplier_init(self, cr, uid, ids, context=None):
         print 'START SUPPLIER INIT'
+        logger.info('START SUPPLIER INIT')
+
+        joblog_obj = self.pool.get('import.job.log')
+        joblog_obj.create(cr, uid, {
+                        'jobname': 'Leveranciers bepalen',
+                        'jobtext': 'Gestart',
+                        'jobrecs': 0,
+                    }, context=context)
+        joblog = joblog_obj.create(cr, uid, {
+                        'jobname': 'Leveranciers bepalen',
+                        'jobtext': 'Loopt',
+                        'jobrecs': 0,
+                    }, context=context)
+        cr.commit()
+
         nbr_books = 0
         nbr_books_1000 = 0
         nbr_suppliers_added = 0
@@ -658,7 +746,7 @@ class supplier_init_wizard(osv.TransientModel):
 
             distributor_found = False
             supplier = 0
-      	    sql_stat = "select supplier_id from res_distributor where name = '%s'" % (distributor, )
+            sql_stat = "select supplier_id from res_distributor where name = '%s'" % (distributor, )
             cr.execute(sql_stat)
             for sql_res in cr.dictfetchall():
                 supplier = sql_res['supplier_id']
@@ -691,6 +779,9 @@ class supplier_init_wizard(osv.TransientModel):
                     nbr_suppliers_deleted = nbr_suppliers_deleted + 1
 
             if nbr_books_1000 > 999:
+                logger.info('Number of books: %s  Number of suppliers added: %s' % (nbr_books, nbr_suppliers_added))
+                joblog_obj.write(cr, uid, joblog, {'jobrecs':nbr_books})
+                cr.commit()
                 print 'Nbr books: ',nbr_books,' (',nbr_suppliers_added,'-',nbr_suppliers_deleted,')'
                 nbr_books_1000 = 0
 
@@ -698,7 +789,9 @@ class supplier_init_wizard(osv.TransientModel):
         print 'Nbr books: ',nbr_books
         print 'Nbr suppliers added: ',nbr_suppliers_added
         print 'Nbr suppliers deleted: ',nbr_suppliers_deleted
+        joblog_obj.write(cr, uid, joblog, {'jobtext':'Beeindigd', 'jobrecs':nbr_books})
         cr.commit()
+        logger.info('END SUPPLIER INIT')
         raise osv.except_osv(_('Verwerkt'), _('Number of lines processed: ' + str(nbr_books)))
         return True
 
