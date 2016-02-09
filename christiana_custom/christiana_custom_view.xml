@@ -404,16 +404,20 @@
                     <group colspan="4">
                  	<separator string="Budgets" colspan="4" />
                         <field name="partner_budget_ids" nolabel="1" context="{'default_partner_id':active_id}">
-            		    <form string="Budget">
-                		<field name="year"/>
-                		<field name="budget"/>
-            		    </form>
-            		    <tree string="Budget">
-                		<field name="year"/>
-                		<field name="budget"/>
-            		    </tree>
-			</field>
-		    </group>
+	            		    <form string="Budget">
+		                		<field name="year"/>
+		                		<field name="budget"/>
+		                		<field name="invoiced" readonly="True"/>
+		                		<field name="to_deliver" readonly="True"/>
+	            		    </form>
+	            		    <tree string="Budget">
+		                		<field name="year"/>
+		                		<field name="budget"/>
+		                		<field name="invoiced" readonly="True"/>
+		                		<field name="to_deliver" readonly="True"/>
+	            		    </tree>
+						</field>
+		    		</group>
                 </page>
             </page>
 <!--	    <field name="property_invoice_type" position="replace"/>
@@ -653,6 +657,7 @@
                 <attribute name="invisible">True</attribute>
             </field>
             <field name="product_id" position="after">
+            	<field name="artikel_status"/>
                 <field name="zichtzending"/>
                 <field name="qty_on_reservation"/>
             </field>
@@ -878,5 +883,262 @@
 
         <menuitem name="Aankooporderlijnen" parent="purchase.menu_procurement_management" id="menu_po_line" sequence="110" action="action_po_line_form"/>
 
+    <record model="ir.ui.view" id="view_users_portal_form">
+        <field name="name">view.users.portal.form</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <field name="lang" position="before">
+                <field name="portal_customer_id"/>
+            </field>
+        </field>
+    </record>
+
+	<record id="view_portal_reservation_search" model="ir.ui.view">
+	    <field name="name">view.portal.reservation.search</field>
+	    <field name="model">stock.reservation</field>
+	    <field name="arch" type="xml">
+			<search string="Reservaties">
+			    <group expand="0" string="Selectie...">
+					<field name="name"/>
+					<field name="partner_id"/>
+			    </group>
+	            <newline />
+	            <group expand="0" string="Group By...">
+	                <filter string="Partner" name="grouptype" context="{'group_by':'partner_id'}" />
+	                <filter string="Factuursoort" name="grouptype" context="{'group_by':'invoice_type_id'}" />
+	                <filter string="Status" name="grouptype" context="{'group_by':'state'}" />
+	            </group>
+			</search>
+	    </field>
+	</record>
+	<record id="view_portal_reservation_line_search" model="ir.ui.view">
+	    <field name="name">view.portal.reservation.line.search</field>
+	    <field name="model">stock.reservation.line</field>
+	    <field name="arch" type="xml">
+			<search string="Verwerkte Reservaties">
+			    <group expand="0" string="Selectie...">
+			    	<field name="reservation_id"/>
+			    	<field name="product_id"/>
+			    	<field name="so_id"/>
+			    	<field name="customer_id"/>
+			    </group>
+			</search>
+	    </field>
+	</record>
+
+	<record id="view_portal_reservation_tree" model="ir.ui.view">
+		<field name='name'>view.portal.reservation.tree</field>
+		<field name='model'>stock.reservation</field>
+		<field name='arch' type='xml'>
+			<tree string="Pakbonnen" create="false" delete="false">
+			    <field name="name" readonly="True"/>
+			    <field name="partner_id" readonly="True"/>
+			    <field name="partner_shipping_id" readonly="True"/>
+			    <field name="date_created" readonly="True"/>
+			    <field name="invoice_type_id" readonly="True"/>
+			    <field name="zichtzending" readonly="True"/>
+			    <field name="state" readonly="True"/>
+			    <field name="book_count" readonly="True"/>
+			    <field name="receipt_count" readonly="True"/>
+			</tree>
+	    </field>
+    </record>
+
+	<record id="view_portal_reservation_line_tree" model="ir.ui.view">
+		<field name='name'>view.portal.reservation.line.tree</field>
+		<field name='model'>stock.reservation.line</field>
+		<field name='arch' type='xml'>
+			<tree string="Pakbonlijnen" editable="bottom" create="false" delete="false">
+			    <field name="reservation_id" readonly="True"/>
+				<field name="state" invisible="True"/>
+			    <field name="product_id" readonly="True"/>
+			    <field name="name" readonly="True"/>
+			    <field name="awso_code" readonly="True"/>
+			    <field name="so_line_id" invisible="True"/>
+			    <field name="so_id" readonly="True"/>
+			    <field name="customer_id" readonly="True"/>
+			    <field name="zichtzending" readonly="True"/>
+			    <field name="combined_vat" readonly="True"/>
+			    <field name="qty_to_deliver" sum="Aantal" readonly="True"/>
+				<field name="qty_retour" sum="Aantal" readonly="True"/>
+			    <field name="qty_confirmed" sum="Aantal" attrs="{'readonly':[('state','=','draft')]}"/>
+			    <field name="so_price" readonly="True"/>
+			    <field name="so_discount" readonly="True"/>
+			    <field name="to_invoice_vat_incl" sum="Waarde" readonly="True"/>
+			</tree>
+		</field>
+	</record>
+
+	<record id="view_portal_reservation_line_form" model="ir.ui.view">
+		<field name='name'>view.portal.reservation.line.form</field>
+		<field name='model'>stock.reservation.line</field>
+		<field name='arch' type='xml'>
+		   	<form string="Pakbonlijn">
+			    <group colspan="4" col="2">
+				    <group>
+					    <field name="name" readonly="True"/>
+					    <field name="product_id" readonly="True"/>
+					    <field name="awso_code" readonly="True"/>
+						<field name="state" invisible="True"/>
+				    </group>
+				    <group>
+					    <field name="so_id" readonly="True"/>
+					    <field name="so_line_id" readonly="True"/>
+					    <field name="customer_id" readonly="True"/>
+					    <field name="qty_to_deliver" readonly="True"/>
+						<field name="qty_retour" readonly="True"/>
+						<field name="qty_confirmed" attrs="{'readonly':[('state','=','draft')]}"/>
+				    </group>
+				    <group>
+					    <field name="zichtzending" readonly="True"/>
+					    <newline/>
+					    <field name="so_price" readonly="True"/>
+					    <field name="so_discount" readonly="True"/>
+				    </group>
+				    <group>
+					        <field name="combined_vat" readonly="True"/>
+				        <field name="vat06" readonly="True"/>
+			    	            <field name="vat21" readonly="True"/>
+		    		</group>
+		    	</group>
+		   	</form>
+		</field>
+	</record>
+
+	<record id="view_portal_scan_form" model="ir.ui.view">
+		<field name='name'>view.portal.scan.form</field>
+		<field name='model'>port.scan</field>
+		<field name='arch' type='xml'>
+			<form string="Pakbon" version="7.0">
+				<group colspan="4" col="2">
+				    <group>
+	 		    	    <field name="pakbon" readonly="True"/>
+				    	<field name="boek" on_change="boek_change(pakbon, boek)"/>
+				    </group>
+				</group>
+			</form>
+		</field>
+	</record>
+
+	<record id="view_portal_reservation_form" model="ir.ui.view">
+		<field name='name'>view.portal.reservation.form</field>
+		<field name='model'>stock.reservation</field>
+		<field name='arch' type='xml'>
+			<form string="Pakbon" version="7.0">
+			    <header>
+					<button name="action_port_scan" string="Scan ontvangsten" type="object" class="oe_highlight" attrs="{'invisible':[('state','=','draft')]}"/>
+			    </header>
+			    <sheet>
+				<group colspan="4" col="2">
+				    <group>
+	 		    	    <field name="name" readonly="True"/>
+				    	<field name="state" readonly="True"/>
+				    	<field name="book_count" readonly="True"/>
+				    	<field name="receipt_count" readonly="True"/>
+				    </group>
+				    <group>
+			     	    <field name="zichtzending" readonly="True"/>
+			     	    <field name="partner_id" readonly="True"/>
+			     	    <field name="partner_shipping_id" readonly="True"/>
+				    </group>
+				</group>
+			    <group colspan="4">
+				    <separator string="Pakbonlijnen" colspan="4"/>
+				    <field name="line_ids" nolabel="1" widget="one2many" context="{'default_reservation_id':active_id}">
+				    	<form string="Pakbonlijn">
+						    <group colspan="4" col="2">
+							    <group>
+								    <field name="name" readonly="True"/>
+								    <field name="product_id" readonly="True"/>
+								    <field name="awso_code" readonly="True"/>
+									<field name="state" invisible="True"/>
+							    </group>
+							    <group>
+								    <field name="so_id" readonly="True"/>
+								    <field name="so_line_id" readonly="True"/>
+								    <field name="customer_id" readonly="True"/>
+								    <field name="qty_to_deliver" readonly="True"/>
+									<field name="qty_retour" readonly="True"/>
+									<field name="qty_confirmed" attrs="{'readonly':[('state','!=','done')]}"/>
+							    </group>
+							    <group>
+								    <field name="zichtzending" readonly="True"/>
+								    <newline/>
+								    <field name="so_price" readonly="True"/>
+								    <field name="so_discount" readonly="True"/>
+							    </group>
+							    <group>
+	 						        <field name="combined_vat" readonly="True"/>
+							        <field name="vat06" readonly="True"/>
+	  			    	            <field name="vat21" readonly="True"/>
+					    		</group>
+					    	</group>
+				    	</form>
+				    </field>
+			    	</group>
+					<field name="comment"/>
+			    </sheet>
+			</form>
+		</field>
+	</record>
+
+    <record model="ir.actions.act_window" id="portal_action_pakbonnen_tree">
+        <field name="name">Pakbonnen</field>
+        <field name="res_model">stock.reservation</field>
+        <field name="view_type">form</field>
+        <field name="view_ids" 
+               eval="[(5, 0, 0),
+                      (0, 0, {'view_mode': 'tree', 'view_id': ref('view_portal_reservation_tree')}), 
+                      (0, 0, {'view_mode': 'form', 'view_id': ref('view_portal_reservation_form')}), 
+                      ]"/>
+ 		<field name="search_view_id" ref="view_portal_reservation_search"/>
+    </record>
+
+    <record model="ir.actions.act_window" id="portal_action_pakbonlijnen">
+        <field name="name">Pakbonlijnen</field>
+        <field name="res_model">stock.reservation.line</field>
+        <field name="view_type">form</field>
+        <field name="view_ids" 
+               eval="[(5, 0, 0),
+                      (0, 0, {'view_mode': 'tree', 'view_id': ref('view_portal_reservation_line_tree')}), 
+                      (0, 0, {'view_mode': 'form', 'view_id': ref('view_portal_reservation_line_form')}), 
+                      ]"/>
+ 		<field name="search_view_id" ref="view_portal_reservation_line_search"/>
+    </record>
+
+    <record id="action_out_picking_move_portal" model="ir.actions.act_window">
+        <field name="name">Deliver Products</field>
+        <field name="res_model">stock.move</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">['|','&amp;',('picking_id','=',False),('location_dest_id.usage', 'in', ['customer','supplier']),'&amp;',('picking_id','!=',False),('picking_id.type','=','out')]</field>
+        <field name="view_id" ref="stock.view_move_tree_reception_picking"/>
+        <field name="context">{'picking_type': 'out', 'search_default_future': True}</field>
+    </record>
+    
+    <menuitem name="Bibliotheken" id="portal_bibliotheken" parent="portal.portal_menu" sequence="40"/>
+    <menuitem name="Pakbonnen" id="portal_pakbonnen" parent="portal_bibliotheken"
+            action="portal_action_pakbonnen_tree" sequence="10"/>
+    <menuitem name="Pakbonlijnen" id="portal_pakbonlijnen_tree" parent="portal_bibliotheken"
+            action="portal_action_pakbonlijnen" sequence="20"/>
+    <menuitem name="Orders" id="portal_orders" parent="portal_bibliotheken"
+            action="sale.action_orders" sequence="30"/>
+    <menuitem name="Nog te leveren" id="portal_lever" parent="portal_bibliotheken"
+            action="action_out_picking_move_portal" sequence="32"/>
+    <menuitem name="Facturen" id="portal_invoices" parent="portal_bibliotheken"
+            action="account.action_invoice_tree" sequence="35"/>
+    <menuitem name="Mijn gegevens" id="portal_cust" parent="portal_bibliotheken"
+            action="base.action_partner_form" sequence="40"/>
+    <menuitem name="Messaging" id="portal.portal_messages" parent="portal.portal_menu" sequence="10" groups="base.group_system"/>
+    <menuitem name="About Us" id="portal.portal_company" parent="portal.portal_menu" sequence="200" groups="base.group_system"/>
+        <menuitem name="To-do" id="portal.portal_mail_starfeeds" parent="portal.portal_messages"
+            action="portal.action_mail_star_feeds_portal" sequence="20" groups="base.group_system"/>  
+        <menuitem name="Inbox" id="portal.portal_inbox" parent="portal.portal_messages"
+            action="portal.action_mail_inbox_feeds_portal" sequence="10" groups="base.group_system"/>
+        <menuitem name="Archives" id="portal.portal_mail_archivesfeeds" parent="portal.portal_messages"
+            action="portal.action_mail_archives_feeds_portal" sequence="30" groups="base.group_system"/>
     </data>
 </openerp>

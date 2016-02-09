@@ -6,6 +6,18 @@ import time
 from openerp.osv import fields, osv
 from openerp.tools.translate import _
 
+ARTIKEL_STATUS_SELECTION = [
+    ('1', 'In Productie'),
+    ('2', 'Verschenen'),
+    ('3', 'In Bijdruk/Herdruk'),
+    ('4', 'Uitverkocht'),
+    ('5', 'Ongekend'),
+    ('6', 'Te Bestellen bij Uitgever'),
+    ('7', 'In Prijs Opgeheven'),
+    ('8', 'Herdruk in Overweging'),
+    ('9', 'Printing on Demand')
+]
+
 WARNING_MESSAGE = [
                    ('no-message','No Message'),
                    ('warning','Warning'),
@@ -150,10 +162,74 @@ class res_partner_budget(osv.osv):
     _name = 'res.partner.budget'
     _description = 'Partner budget'
 
+    def _to_deliver(self, cr, uid, ids, name, arg, context=None):
+        res = {}
+        for line in self.browse(cr, uid, ids):
+            if line.partner_id.type == 'delivery':
+                sql_stat = '''select sum(product_qty) as totaal
+ from stock_move
+ where 
+  partner_id = %d
+  and
+  state in ('assigned','confirmed')
+  and
+  not(sale_line_id is null)
+''' % (line.partner_id)
+            else:
+                sql_stat = '''select sum(product_qty) as totaal
+ from stock_move
+ where 
+ (
+  partner_id in (select id from res_partner where parent_id = %d)
+  or
+  partner_id = %d
+ )
+  and
+  state in ('assigned','confirmed')
+  and
+  not(sale_line_id is null)
+''' % (line.partner_id, line.partner_id)
+            cr.execute(sql_stat)
+            sql_res = cr.dictfetchone()
+            if sql_res:
+                res[line.id] = sql_res['totaal']
+            else:
+                res[line.id] = 0
+                
+        return res
+
+    def _gefactureerd(self, cr, uid, ids, name, arg, context=None):
+        res = {}
+        for line in self.browse(cr, uid, ids):
+            sql_stat = '''select sum(case when type = 'out_invoice' 
+ then amount_total else (0 - amount_total) end) as totaal
+ from account_invoice
+ inner join account_period on account_invoice.period_id = account_period.id
+ inner join account_fiscalyear on account_period.fiscalyear_id = account_fiscalyear.id
+ where 
+  (
+    ('%s' = 'delivery' and del_addr_id = %d)
+    or
+    (not('%s' = 'delivery') and partner_id = %d)
+  )
+ and account_fiscalyear.code = '%s'
+ and not(account_invoice.state = 'cancel')
+''' % (line.partner_id.type, line.partner_id, line.partner_id.type, line.partner_id, line.year )
+            cr.execute(sql_stat)
+            sql_res = cr.dictfetchone()
+            if sql_res:
+                res[line.id] = sql_res['totaal']
+            else:
+                res[line.id] = 0
+                
+        return res
+        
     _columns = { 
         'year': fields.char('Year', size=4, required=True),
         'budget': fields.float('Budget', digits=(12,2)),
         'partner_id': fields.many2one('res.partner', 'Partner', required=True, select=True),
+        'invoiced': fields.function(_gefactureerd, string="Gefactureerd", type='float', digits=(12,2)),
+        'to_deliver': fields.function(_to_deliver, string="Aantal nog te leveren", type='float', digits=(12,2)),
     }
 
 res_partner_budget()
@@ -744,6 +820,8 @@ class stock_move(osv.osv):
     _columns = {
         'distributeur_search': fields.function(_function_distributeur, string='Distributeur', type='char', store=True),
         'zichtzending': fields.boolean('Zichtzending'),
+        'order_state': fields.related('order_id', 'state', type='char', relation='purchase.order', string='Order State', readonly=True),
+        'artikel_status': fields.related('product_id', 'artikel_status', type='selection', relation='product.product', string='Artikel Status', selection=ARTIKEL_STATUS_SELECTION, readonly=True),
     }
 
     _defaults={
@@ -752,3 +830,112 @@ class stock_move(osv.osv):
 
 stock_move()
 
+class res_users(osv.osv):
+    _inherit = 'res.users'
+
+    _columns = {
+    'portal_customer_id': fields.many2one('res.partner','Customer for Portal',domain=[('is_company','=',True),('customer','=',True)]),
+    }
+
+res_users()
+
+class port_scan(osv.osv_memory):
+    _name = "port.scan"
+    _description = "Scannen ontvangst"
+
+    _columns = {
+        'pakbon': fields.char('Pakbon', size=8),
+        'boek': fields.char('ISBN', size=13),
+        }
+    
+    def boek_change(self, cr, uid, ids, pakbon, boek, context=None):
+        res = {}
+        if boek == False or boek == None:
+            return res
+        boek_found = False
+        pakbon_found = False
+        line_found = False
+        
+        print 'pakbon',pakbon
+        print 'boek',boek
+        print context
+
+        sql_stat = """
+select id
+from product_product
+where default_code = '%s';
+""" % (boek, )
+        cr.execute (sql_stat)
+        for sql_res in cr.dictfetchall():
+            boek_found = True
+            product_id = sql_res['id']
+
+        if boek_found:        
+            sql_stat = """
+select id
+from stock_reservation
+where name = '%s';
+""" % (pakbon, )
+        cr.execute (sql_stat)
+        for sql_res in cr.dictfetchall():
+            pakbon_found = True
+            pakbon_id = sql_res['id']
+
+        if pakbon_found:        
+            sql_stat = """
+select id, qty_to_deliver, qty_retour, qty_confirmed
+from stock_reservation_line
+where product_id = %d and reservation_id = %d;
+""" % (product_id, pakbon_id)
+            cr.execute (sql_stat)
+            for sql_res in cr.dictfetchall():
+                line_found = True
+                line_id = sql_res['id']
+                qty_to_deliver = sql_res['qty_to_deliver']
+                qty_retour = sql_res['qty_retour']
+                qty_confirmed = sql_res['qty_confirmed']
+                
+        if line_found and qty_confirmed < qty_to_deliver - qty_retour:        
+            sql_stat = """
+update stock_reservation_line set qty_confirmed = qty_confirmed + 1
+where id = %d;
+""" % (line_id, )
+            cr.execute (sql_stat)
+            cr.commit()
+            res['boek'] = None
+        
+        if not boek_found:
+            raise osv.except_osv(('Waarschuwing !'),_(('Boek met ISBN barcode %s bestaat niet in de data base') % (boek, )))
+        if not pakbon_found:
+            raise osv.except_osv(('Waarschuwing !'),_(('Pakbon %s bestaat niet') % (pakbon, )))
+        if boek_found and pakbon_found and not line_found:
+            raise osv.except_osv(('Waarschuwing !'),_(('Boek %s komt niet voor in pakbon %s') % (boek, pakbon, )))
+        if line_found and not(qty_confirmed < qty_to_deliver - qty_retour):
+            raise osv.except_osv(('Waarschuwing !'),_(('U zou meer ontvangen dan op de pakbon voorzien, zie na en contacteer eventueel Christiana')))
+        
+        return {'value':res}
+    
+port_scan()
+
+class stock_reservation(osv.osv):
+    _inherit = 'stock.reservation' 
+    
+    def action_port_scan(self, cr, uid, ids, context=None):
+
+        view_id = self.pool.get('ir.ui.view').search(cr, uid, [('model','=','port.scan'),
+                                                            ('name','=','view.portal.scan.form')])
+
+        pakbon = self.browse(cr, uid, ids)[0]
+        context['default_pakbon'] = pakbon.name
+        context['default_boek'] = None
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Scan ontvangst pakbon',
+            'view_mode': 'form',
+            'view_type': 'form',
+            'view_id': view_id[0],
+            'res_model': 'port.scan',
+            'target': 'new',
+            'context': context,
+            }

@@ -385,8 +385,10 @@ class product_import_wizard(osv.TransientModel):
             uitgevernummer = row[3]
             distributeur = row[4]
             druknummer = row[5]
-            verschijningsdatum = row[6][4:8] + '/' + row[6][2:4] + '/' + row[6][0:2]
-#             verschijningsdatum = row[6][0:2] + '/' + row[6][2:4] + '/' + row[6][4:8]
+# lijn voor alain (postgres datumformaat verschilt)
+#             verschijningsdatum = row[6][4:8] + '/' + row[6][2:4] + '/' + row[6][0:2]
+# lijn voor bij christiana
+            verschijningsdatum = row[6][0:2] + '/' + row[6][2:4] + '/' + row[6][4:8]
             fondscode = row[7]
             reeksnummer = row[8]
 #             nugi_code = row[9]
@@ -547,6 +549,12 @@ class product_import_wizard(osv.TransientModel):
                     }
                     product_template_id = tmpl_obj.create(cr, uid, vals)   
                     nbr_product_template_a = nbr_product_template_a + 1  
+
+                    sql_stat = 'insert into product_taxes_rel (prod_id, tax_id) values(%d, %d)' % (product_template_id, cust_btw_code_id)
+                    cr.execute(sql_stat)
+                    sql_stat = 'insert into product_supplier_taxes_rel (prod_id, tax_id) values(%d, %d)' % (product_template_id, supplier_btw_code_id)
+                    cr.execute(sql_stat)
+
                 else:
                     vals = {
                         'list_price': verkoopprijs,
@@ -634,10 +642,6 @@ class product_import_wizard(osv.TransientModel):
 #                            'product_id': product_product_id,
 #                        }
 #                        product_supplier_id = self.pool.get('product.supplierinfo').create(cr, uid, vals)
-                    sql_stat = 'insert into product_taxes_rel (prod_id, tax_id) values(%d, %d)' % (product_template_id, cust_btw_code_id)
-                    cr.execute(sql_stat)
-                    sql_stat = 'insert into product_supplier_taxes_rel (prod_id, tax_id) values(%d, %d)' % (product_template_id, supplier_btw_code_id)
-                    cr.execute(sql_stat)
 
 
                 else:

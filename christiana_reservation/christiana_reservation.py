@@ -693,6 +693,74 @@ class stock_reservation(osv.osv):
 	_name = "stock.reservation"
 	_order = "id desc"
 
+	def _book_count(self, cr, uid, ids, name, arg, context=None):
+		res = {}
+		for id in ids:
+			sql_stat = '''select sum(qty_to_deliver - qty_retour) as aantal from stock_reservation_line
+ inner join stock_reservation on stock_reservation.id = stock_reservation_line.reservation_id
+ where stock_reservation.id = %d
+ group by stock_reservation.id ''' % (id, )
+			cr.execute(sql_stat)
+			sql_res = cr.dictfetchone()
+			if sql_res:
+				res[id] = sql_res['aantal']
+			else:
+				res[id] = 0
+				
+		return res
+
+	def _receipt_count(self, cr, uid, ids, name, arg, context=None):
+		res = {}
+		for id in ids:
+			sql_stat = '''select sum(qty_confirmed) as aantal from stock_reservation_line
+ inner join stock_reservation on stock_reservation.id = stock_reservation_line.reservation_id
+ where stock_reservation.id = %d
+ group by stock_reservation.id ''' % (id, )
+			cr.execute(sql_stat)
+			sql_res = cr.dictfetchone()
+			if sql_res:
+				res[id] = sql_res['aantal']
+			else:
+				res[id] = 0
+				
+		return res
+
+	def _sent_count(self, cr, uid, ids, name, arg, context=None):
+		res = {}
+		for id in ids:
+			sql_stat = '''select sum(qty_sent) as aantal from stock_reservation_line
+ inner join stock_reservation on stock_reservation.id = stock_reservation_line.reservation_id
+ where stock_reservation.id = %d
+ group by stock_reservation.id ''' % (id, )
+			cr.execute(sql_stat)
+			sql_res = cr.dictfetchone()
+			if sql_res:
+				res[id] = sql_res['aantal']
+			else:
+				res[id] = 0
+				
+		return res
+
+	def action_res_scan(self, cr, uid, ids, context=None):
+
+		view_id = self.pool.get('ir.ui.view').search(cr, uid, [('model','=','res.scan'),
+															('name','=','view.res.scan.form')])
+
+		pakbon = self.browse(cr, uid, ids)[0]
+		context['default_pakbon'] = pakbon.name
+		context['default_boek'] = None
+
+		return {
+			'type': 'ir.actions.act_window',
+			'name': 'Scan zending',
+			'view_mode': 'form',
+			'view_type': 'form',
+			'view_id': view_id[0],
+			'res_model': 'res.scan',
+			'target': 'new',
+			'context': context,
+			}
+
 	_columns = {
 		'name': fields.char('Pakbon'),
 		'partner_id': fields.many2one('res.partner', 'Klant', select=True),
@@ -703,7 +771,11 @@ class stock_reservation(osv.osv):
 		'scan_id': fields.many2one('stock.scan', 'Scan-procedure', readonly=True),
 		'zichtzending': fields.boolean('Zichtzending'),
 		'comment': fields.text('Opmerking'),
-		'invoice_type_id': fields.many2one('sale_journal.invoice.type', 'Invoice Type', readonly=True)
+		'invoice_type_id': fields.many2one('sale_journal.invoice.type', 'Invoice Type', readonly=True),
+		'receipt_state': fields.char('Ontvangst status'),
+		'book_count': fields.function(_book_count, string="Aantal boeken", type='integer'),
+		'receipt_count': fields.function(_receipt_count, string="Aantal ontvangen", type='integer'),
+		'sent_count': fields.function(_sent_count, string="Aantal verzonden", type='integer'),
 	}
 
 	_defaults={
@@ -711,6 +783,7 @@ class stock_reservation(osv.osv):
 		'state': 'draft',
 		'zichtzending': False,
 		'invoice_type_id': None,
+		'receipt_state': 'open',
 	}
 
 	def onchange_partner(self, cr, uid, ids, partner_id, zichtzending, context=None):
@@ -1302,11 +1375,15 @@ where stock_move.id = %d
 		'state': fields.related('reservation_id', 'state', string='Status', type='char'),
 		'qty_retour': fields.float('Hoev. Retour'),
 		'to_invoice_vat_incl': fields.function(_calc_amount, string="Fact.Bedrag", type='float'),
+		'qty_confirmed': fields.float('Hoev. Ontv.'),
+		'qty_sent': fields.float('Hoev. Verzonden'),
 	}
 
 	_defaults = {
 		'qty_to_deliver': 1.00,
 		'qty_retour': 0.00,
+		'qty_confirmed': 0.00,
+		'qty_sent': 0.00,
 	}
 
 	_order = "title"
@@ -1466,4 +1543,77 @@ class stock_invoice_reservation(osv.osv_memory):
 
 stock_invoice_reservation()
 
+class res_scan(osv.osv_memory):
+	_name = "res.scan"
+	_description = "Scannen zending"
+
+	_columns = {
+        'pakbon': fields.char('Pakbon', size=8),
+        'boek': fields.char('ISBN', size=13),
+        }
+
+	def boek_change(self, cr, uid, ids, pakbon, boek, context=None):
+		res = {}
+		if boek == False or boek == None:
+			return res
+		boek_found = False
+		pakbon_found = False
+		line_found = False
+
+		sql_stat = """
+select id
+from product_product
+where default_code = '%s';
+""" % (boek, )
+		cr.execute (sql_stat)
+		for sql_res in cr.dictfetchall():
+			boek_found = True
+			product_id = sql_res['id']
+
+		if boek_found:        
+			sql_stat = """
+select id
+from stock_reservation
+where name = '%s';
+""" % (pakbon, )
+		cr.execute (sql_stat)
+		for sql_res in cr.dictfetchall():
+			pakbon_found = True
+			pakbon_id = sql_res['id']
+
+		if pakbon_found:        
+			sql_stat = """
+select id, qty_to_deliver, qty_retour, qty_sent
+from stock_reservation_line
+where product_id = %d and reservation_id = %d;
+""" % (product_id, pakbon_id)
+			cr.execute (sql_stat)
+			for sql_res in cr.dictfetchall():
+				line_found = True
+				line_id = sql_res['id']
+				qty_to_deliver = sql_res['qty_to_deliver']
+				qty_retour = sql_res['qty_retour']
+				qty_sent = sql_res['qty_sent']
+
+		if line_found and qty_sent < qty_to_deliver - qty_retour:        
+			sql_stat = """
+update stock_reservation_line set qty_sent = qty_sent + 1
+where id = %d;
+""" % (line_id, )
+			cr.execute (sql_stat)
+			cr.commit()
+			res['boek'] = None
+
+		if not boek_found:
+			raise osv.except_osv(('Waarschuwing !'),_(('Boek met ISBN barcode %s bestaat niet in de data base') % (boek, )))
+		if not pakbon_found:
+			raise osv.except_osv(('Waarschuwing !'),_(('Pakbon %s bestaat niet') % (pakbon, )))
+		if boek_found and pakbon_found and not line_found:
+			raise osv.except_osv(('Waarschuwing !'),_(('Boek %s komt niet voor in pakbon %s') % (boek, pakbon, )))
+		if line_found and not(qty_sent < qty_to_deliver - qty_retour):
+			raise osv.except_osv(('Waarschuwing !'),_(('U zou meer verzenden dan op de pakbon voorzien')))
+
+		return {'value':res}
+
+res_scan()
 

@@ -197,15 +197,18 @@
             <field name='name'>view.reservation.tree</field>
             <field name='model'>stock.reservation</field>
             <field name='arch' type='xml'>
-		<tree string="Reservaties">
-		    <field name="name"/>
-		    <field name="partner_id"/>
-		    <field name="partner_shipping_id"/>
-		    <field name="date_created"/>
-		    <field name="invoice_type_id"/>
-		    <field name="zichtzending"/>
-		    <field name="state"/>
-		</tree>
+			<tree string="Reservaties">
+			    <field name="name"/>
+			    <field name="partner_id"/>
+			    <field name="partner_shipping_id"/>
+			    <field name="date_created"/>
+			    <field name="invoice_type_id"/>
+			    <field name="zichtzending"/>
+			    <field name="state"/>
+			    <field name="book_count"/>
+			    <field name="sent_count"/>
+			    <field name="receipt_count"/>
+			</tree>
 	    </field>
         </record>
 
@@ -218,12 +221,16 @@
                         <button name="action_confirm" string="Verwerk Verzending" type="object" class="oe_highlight" attrs="{'invisible':[('state','!=','draft')]}"/>
                         <button name="action_retour" string="Verwerk Retours" type="object" class="oe_highlight" attrs="{'invisible':[('state','!=','done')]}"/>
                         <button name="action_invoice_create" string="Maak factuur" type="object" class="oe_highlight" attrs="{'invisible':[('state','!=','done'),('state','!=','returned')]}"/>
+					<button name="action_res_scan" string="Scan Zending" type="object" class="oe_highlight"/>
 		    </header>
 		    <sheet>
 			<group colspan="4" col="2">
 			    <group>
  		    	    <field name="name"/>
 			    	<field name="state" readonly="True"/>
+			    	<field name="book_count" readonly="True"/>
+			    	<field name="sent_count" readonly="True"/>
+			    	<field name="receipt_count" readonly="True"/>
 			    </group>
 			    <group>
 		     	    <field name="zichtzending" on_change="onchange_zichtzending(zichtzending, partner_id)"/>
@@ -249,6 +256,8 @@
 							    <field name="customer_id" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
 							    <field name="qty_to_deliver" attrs="{'readonly':[('state','!=','draft'),('state','!=', False)]}"/>
 								<field name="qty_retour" attrs="{'readonly':[('state','!=','done')]}"/>
+								<field name="qty_sent"/>
+								<field name="qty_confirmed" attrs="{'readonly':[('state','=','draft')]}"/>
 						    </group>
 						    <group>
 							    <field name="zichtzending" readonly="True"/>
@@ -265,6 +274,25 @@
 				    		</group>
 				    	</group>
 			    	</form>
+			    	<tree string="Reservaties">
+					    <field name="reservation_id"/>
+						<field name="state" invisible="True"/>
+					    <field name="product_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="name" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="awso_code" readonly="True"/>
+					    <field name="so_line_id" invisible="True"/>
+					    <field name="so_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="customer_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="zichtzending" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="combined_vat" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="qty_to_deliver" sum="Aantal" attrs="{'readonly':[('state','!=','draft')]}"/>
+						<field name="qty_retour" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
+					    <field name="qty_sent" sum="Aantal"/>
+					    <field name="qty_confirmed" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
+					    <field name="so_price" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="so_discount" attrs="{'readonly':[('state','!=','draft')]}"/>
+					    <field name="to_invoice_vat_incl" sum="Waarde" readonly="True"/>
+					</tree>
 			    </field>
 		    	</group>
 			<field name="comment"/>
@@ -273,12 +301,31 @@
 	    </field>
         </record>
 
+	<record id="view_res_scan_form" model="ir.ui.view">
+		<field name='name'>view.res.scan.form</field>
+		<field name='model'>res.scan</field>
+		<field name='arch' type='xml'>
+			<form string="Pakbon" version="7.0">
+				<group colspan="4" col="2">
+				    <group>
+	 		    	    <field name="pakbon" readonly="True"/>
+				    	<field name="boek" on_change="boek_change(pakbon, boek)"/>
+				    </group>
+				</group>
+			</form>
+		</field>
+	</record>
+
         <record model="ir.actions.act_window" id="action_reservation_form">
             <field name="name">Reservaties</field>
             <field name="res_model">stock.reservation</field>
-            <field name="view_mode">tree,form</field>
             <field name="view_type">form</field>
-	    <field name="search_view_id" ref="view_reservation_search"/>
+        	<field name="view_ids" 
+               eval="[(5, 0, 0),
+                      (0, 0, {'view_mode': 'tree', 'view_id': ref('view_reservation_tree')}), 
+                      (0, 0, {'view_mode': 'form', 'view_id': ref('view_reservation_form')}), 
+                      ]"/>
+	    	<field name="search_view_id" ref="view_reservation_search"/>
         </record>
 
 	<record id="view_reservation_line_search" model="ir.ui.view">
@@ -300,23 +347,25 @@
             <field name='name'>view.reservation.line.tree</field>
             <field name='model'>stock.reservation.line</field>
             <field name='arch' type='xml'>
-		<tree string="Reservaties">
-		    <field name="reservation_id"/>
-			<field name="state" invisible="True"/>
-		    <field name="product_id" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="name" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="awso_code" readonly="True"/>
-		    <field name="so_line_id" invisible="True"/>
-		    <field name="so_id" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="customer_id" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="zichtzending" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="combined_vat" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="qty_to_deliver" sum="Aantal" attrs="{'readonly':[('state','!=','draft')]}"/>
-			<field name="qty_retour" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
-		    <field name="so_price" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="so_discount" attrs="{'readonly':[('state','!=','draft')]}"/>
-		    <field name="to_invoice_vat_incl" sum="Waarde" readonly="True"/>
-		</tree>
+				<tree string="Reservaties">
+				    <field name="reservation_id"/>
+					<field name="state" invisible="True"/>
+				    <field name="product_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="name" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="awso_code" readonly="True"/>
+				    <field name="so_line_id" invisible="True"/>
+				    <field name="so_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="customer_id" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="zichtzending" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="combined_vat" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="qty_to_deliver" sum="Aantal" attrs="{'readonly':[('state','!=','draft')]}"/>
+					<field name="qty_retour" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
+				    <field name="qty_sent" sum="Aantal"/>
+				    <field name="qty_confirmed" sum="Aantal" attrs="{'readonly':[('state','!=','done')]}"/>
+				    <field name="so_price" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="so_discount" attrs="{'readonly':[('state','!=','draft')]}"/>
+				    <field name="to_invoice_vat_incl" sum="Waarde" readonly="True"/>
+				</tree>
 	    </field>
         </record>
 

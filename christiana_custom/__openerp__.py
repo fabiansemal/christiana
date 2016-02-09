@@ -6,7 +6,7 @@
 	"description" : '''This module extends OpenERP for the needs of Boekbedrijf Christiana''',
 	"website" : "http://",
 	"category" : "product",
-	"depends" : ["product","sale","account","warning","stock","christiana_reservation"],
+	"depends" : ["product","sale","account","warning","stock","christiana_reservation","portal"],
 	"init_xml" : [],
 	"demo_xml" : [],
 	"update_xml" : ["christiana_custom_view.xml"],
