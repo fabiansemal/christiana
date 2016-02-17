@@ -1061,7 +1061,7 @@
 								    <field name="customer_id" readonly="True"/>
 								    <field name="qty_to_deliver" readonly="True"/>
 									<field name="qty_retour" readonly="True"/>
-									<field name="qty_confirmed" attrs="{'readonly':[('state','!=','done')]}"/>
+									<field name="qty_confirmed" attrs="{'readonly':[('state','=','draft')]}"/>
 							    </group>
 							    <group>
 								    <field name="zichtzending" readonly="True"/>
