@@ -856,10 +856,6 @@ class port_scan(osv.osv_memory):
         pakbon_found = False
         line_found = False
         
-        print 'pakbon',pakbon
-        print 'boek',boek
-        print context
-
         sql_stat = """
 select id
 from product_product
@@ -881,7 +877,8 @@ where name = '%s';
             pakbon_found = True
             pakbon_id = sql_res['id']
 
-        if pakbon_found:        
+        if pakbon_found: 
+            print "select 1"       
             sql_stat = """
 select id, qty_to_deliver, qty_retour, qty_confirmed
 from stock_reservation_line
@@ -903,6 +900,29 @@ where id = %d;
             cr.execute (sql_stat)
             cr.commit()
             res['boek'] = None
+        else:
+            print "2° select"
+            sql_stat = """
+select id, qty_to_deliver, qty_retour, qty_confirmed
+from stock_reservation_line
+where product_id = %d and reservation_id = %d and qty_confirmed < qty_to_deliver - qty_retour;
+""" % (product_id, pakbon_id)
+            cr.execute (sql_stat)
+            for sql_res in cr.dictfetchall():
+                line_found = True
+                line_id = sql_res['id']
+                qty_to_deliver = sql_res['qty_to_deliver']
+                qty_retour = sql_res['qty_retour']
+                qty_confirmed = sql_res['qty_confirmed']
+                
+            if line_found and qty_confirmed < qty_to_deliver - qty_retour:        
+                sql_stat = """
+update stock_reservation_line set qty_confirmed = qty_confirmed + 1
+where id = %d;
+""" % (line_id, )
+                cr.execute (sql_stat)
+                cr.commit()
+                res['boek'] = None
         
         if not boek_found:
             raise osv.except_osv(('Waarschuwing !'),_(('Boek met ISBN barcode %s bestaat niet in de data base') % (boek, )))

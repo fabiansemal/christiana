@@ -1603,6 +1603,29 @@ where id = %d;
 			cr.execute (sql_stat)
 			cr.commit()
 			res['boek'] = None
+		else:
+			print "select 2"
+			sql_stat = """
+select id, qty_to_deliver, qty_retour, qty_sent
+from stock_reservation_line
+where product_id = %d and reservation_id = %d and qty_sent < qty_to_deliver - qty_retour;
+""" % (product_id, pakbon_id)
+			cr.execute (sql_stat)
+			for sql_res in cr.dictfetchall():
+				line_found = True
+				line_id = sql_res['id']
+				qty_to_deliver = sql_res['qty_to_deliver']
+				qty_retour = sql_res['qty_retour']
+				qty_sent = sql_res['qty_sent']
+
+			if line_found and qty_sent < qty_to_deliver - qty_retour:		
+				sql_stat = """
+update stock_reservation_line set qty_sent = qty_sent + 1
+where id = %d;
+""" % (line_id, )
+				cr.execute (sql_stat)
+				cr.commit()
+				res['boek'] = None
 
 		if not boek_found:
 			raise osv.except_osv(('Waarschuwing !'),_(('Boek met ISBN barcode %s bestaat niet in de data base') % (boek, )))

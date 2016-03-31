@@ -763,6 +763,12 @@ class supplier_init_wizard(osv.TransientModel):
                 for sql_res in cr.dictfetchall():
                     prodsupp_found = True
                 if not prodsupp_found:
+                    sql_stat = "select id from product_supplierinfo where product_id = %d" % (product_tmpl_id, )
+                    cr.execute(sql_stat)
+                    for sql_res in cr.dictfetchall():
+                        sql_stat = "delete from product_supplierinfo where id = %d" % (sql_res['id'])
+                        cr.execute(sql_stat)
+                        nbr_suppliers_deleted = nbr_suppliers_deleted + 1
                     vals = {
                         'name': supplier,
                         'sequence': 1,
